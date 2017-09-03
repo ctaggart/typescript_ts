@@ -18,7 +18,6 @@ impl<'a> Js<'a> {
         let mut file = File::open(js).expect("unable to open the file");
         let mut contents = String::new();
         file.read_to_string(&mut contents).expect("unable to read the file");
-
         chakracore::script::eval(&guard, &contents).expect("invalid JavaScript code");
 
         Js { guard: guard }
@@ -81,7 +80,6 @@ pub mod ts {
             // ]);
             let rv = function.call_with_this(self.guard, &self.object, &[]);
             println!("rv: {:?}", rv);
-            
             let object = rv.unwrap().into_object().unwrap();
             SourceFileImpl { guard: self.guard, object: object }
         }
@@ -93,7 +91,21 @@ pub mod ts {
 
             let rv = function.call_with_this(self.guard, &self.object, &[]);
             println!("rv: {:?}", rv);
-            
+            let object = rv.unwrap().into_object().unwrap();
+            SourceFileImpl { guard: self.guard, object: object } // TODO Printer
+        }
+
+        // var node = ts.createNode(kind, -1, -1);
+        // function createNode(kind: SyntaxKind, pos?: number, end?: number): Node;
+        pub fn createNode(&self, kind: i32, pos: i32, end: i32) -> SourceFileImpl<'a> {
+            let function = self.object.get(self.guard, &chakracore::Property::new(self.guard, "createNode")).into_function().unwrap();
+            println!("got function createNode");
+            let rv = function.call_with_this(self.guard, &self.object, &[
+                &chakracore::value::Number::new(self.guard, 3).into(),
+                &chakracore::value::Number::new(self.guard, -1).into(),
+                &chakracore::value::Number::new(self.guard, -1).into(),
+            ]);
+            println!("rv: {:?}", rv);
             let object = rv.unwrap().into_object().unwrap();
             SourceFileImpl { guard: self.guard, object: object } // TODO Printer
         }
