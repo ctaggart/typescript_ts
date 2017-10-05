@@ -1,0 +1,6 @@
+{
+  "name": "typescript_ts",
+  "dependencies": {
+    "typescript": "^2.5.3"
+  }
+}

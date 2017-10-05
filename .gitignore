@@ -1,4 +1,6 @@
-/target/
+target/
 **/*.rs.bk
 Cargo.lock
-/.vscode/
+.vscode/
+node_modules/
+package-lock.json
