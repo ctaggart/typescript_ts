@@ -1,17 +1,12 @@
-extern crate chakracore as js;
 extern crate typescript_ts;
 
-use std::io::prelude::*;
-use std::fs::File;
-use js::Property;
-
 fn main() {
-    let runtime = js::Runtime::new().unwrap();
-    let context = js::Context::new(&runtime).unwrap();
-    let guard = context.make_current().unwrap();
+    let (_runtime, context) = typescript_ts::new_context();
+    let guard = typescript_ts::new_guard(&context);
+    
+    let js = typescript_ts::read_js();
+    typescript_ts::eval_js(&guard, &js);
 
-    let js = typescript_ts::Js::new(&guard);
-    let ts = js.ts();
-
-    println!("version: {}", ts.version());
+    let ts = typescript_ts::ts(&guard);
+    println!("version: {}", ts.version(&guard));
 }

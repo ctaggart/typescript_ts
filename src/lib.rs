@@ -3,690 +3,613 @@
 #![allow(dead_code)]
 #![allow(non_snake_case)]
 extern crate chakracore;
-
 use std::io::prelude::*;
 use std::fs::File;
 
-pub struct Js<'a> {
-    guard: &'a chakracore::context::ContextGuard<'a>,
+pub fn read_js() -> String {
+    let file = "./node_modules/typescript/lib/typescript.js";
+    let mut f = File::open(file).expect("unable to open the file");
+    let mut js = String::new();
+    f.read_to_string(&mut js).expect("unable to read the file");
+    js
 }
 
-impl<'a> Js<'a> {
-    pub fn new(guard: &'a chakracore::context::ContextGuard<'a>) -> Js<'a> {
+pub struct Js;
 
-        let js = r"C:\Users\camer\ts\TsAst\node_modules\typescript\lib\typescript.js";
-        let mut file = File::open(js).expect("unable to open the file");
-        let mut contents = String::new();
-        file.read_to_string(&mut contents).expect("unable to read the file");
-        chakracore::script::eval(&guard, &contents).expect("invalid JavaScript code");
-
-        Js { guard: guard }
-    }
-
-    pub fn ts(&self) -> ts::Ts<'a> {
-        // let object = self.guard.global().get(self.guard, &chakracore::Property::new(self.guard, "ts")).into_object().unwrap();
-        // ts::Ts { guard: self.guard, object: object }
-        ts::Ts::new(self.guard)
+impl Js {
+    pub fn version(guard: &chakracore::context::ContextGuard) -> String {
+        guard.global().get(guard, &chakracore::Property::new(guard, "ts")).to_string(guard)
     }
 }
 
-pub mod ts {
+pub trait GetObject {
+    fn object(&self) -> &chakracore::value::Object;
+}
 
-    extern crate chakracore;
+pub struct ObjectBox {
+    object: chakracore::value::Object,
+}
 
-    // declare namespace ts
-    pub struct Ts<'a> {
-        guard: &'a chakracore::context::ContextGuard<'a>,
-        object: chakracore::value::Object,
+impl GetObject for ObjectBox {
+    fn object(&self) -> &chakracore::value::Object {
+        &self.object
+    }
+}
+
+pub fn new_context() -> (chakracore::Runtime, chakracore::Context) {
+    let runtime = chakracore::Runtime::new().unwrap();
+    let context = chakracore::Context::new(&runtime).unwrap();
+    (runtime, context)
+}
+
+pub fn new_guard(context: &chakracore::Context) -> chakracore::context::ContextGuard {
+    context.make_current().unwrap()
+}
+
+pub fn eval_js(guard: &chakracore::context::ContextGuard, js: &str) {
+    chakracore::script::eval(guard, js).expect("invalid JavaScript code");
+}
+
+/// get the `ts` variable that exposes the TypeScript module
+pub fn ts(guard: &chakracore::context::ContextGuard) -> Box<TsMod> {
+    let ts = guard.global().get(guard, &chakracore::Property::new(guard, "ts")).into_object().unwrap();
+    Box::new(ObjectBox { object: ts })
+}
+
+/// TypeScript module exposed by the `ts` variable
+pub trait TsMod : GetObject {
+    fn version(&self, guard: &chakracore::context::ContextGuard) -> String {
+        self.object().get(guard, &chakracore::Property::new(guard, "version")).to_string(guard)
     }
 
-    impl<'a> Ts<'a> {
-        pub fn new(guard: &'a chakracore::context::ContextGuard<'a>) -> Ts<'a> {
-            let object = guard.global().get(guard, &chakracore::Property::new(guard, "ts")).into_object().unwrap();
-            Ts { guard: guard, object: object }
-        }
-
-        pub fn version(&self) -> String {
-            self.object.get(self.guard, &chakracore::Property::new(self.guard, "version")).to_string(self.guard)
-        }
-
-        pub fn createSourceFile(&self, fileName: &str, sourceText: &str, languageVersion: ScriptTarget, setParentNodes: Option<bool>, scriptKind: Option<ScriptKind>) -> SourceFileImpl<'a> {
-            println!("do createSourceFile");
-            let function = self.object.get(self.guard, &chakracore::Property::new(self.guard, "createSourceFile")).into_function().unwrap();
-            println!("got function createSourceFile");
-
-            // println!("file");
-            // let file = &chakracore::value::String::new(self.guard, fileName).into();
-            // println!("st");
-            // let st = &chakracore::value::String::new(self.guard, sourceText).into();
-            // println!("lv");
-            // let lv = &chakracore::value::Number::new(self.guard, 5).into();
-            // println!("f");
-            // let f = &chakracore::value::Boolean::new(self.guard, false).into();
-            // println!("sk");
-            // let sk = &chakracore::value::Number::new(self.guard, 3).into();
-            // println!("all params");
-
-            // println!("object: {:?}", self.object.);
-
-            // let rv = function.call_with_this(self.guard, &self.object, &[
-            //     file,
-            //     // st,
-            //     // //  &chakracore::value::Number::new(self.guard, languageVersion).into(), TODO
-            //     // lv,
-            //     // f, // TODO
-            //     // // &chakracore::value::Number::new(self.guard, ScriptKind::TS).into(), // TODO
-            //     // sk,
-            // ]);
-            let rv = function.call_with_this(self.guard, &self.object, &[]);
-            println!("rv: {:?}", rv);
-            let object = rv.unwrap().into_object().unwrap();
-            SourceFileImpl { guard: self.guard, object: object }
-        }
-
-        pub fn createPrinter(&self) -> SourceFileImpl<'a> { // TODO Printer
-            println!("do createPrinter");
-            let function = self.object.get(self.guard, &chakracore::Property::new(self.guard, "createPrinter")).into_function().unwrap();
-            println!("got function createPrinter");
-
-            let rv = function.call_with_this(self.guard, &self.object, &[]);
-            println!("rv: {:?}", rv);
-            let object = rv.unwrap().into_object().unwrap();
-            SourceFileImpl { guard: self.guard, object: object } // TODO Printer
-        }
-
-        // var node = ts.createNode(kind, -1, -1);
-        // function createNode(kind: SyntaxKind, pos?: number, end?: number): Node;
-        pub fn createNode(&self, kind: i32, pos: i32, end: i32) -> SourceFileImpl<'a> {
-            let function = self.object.get(self.guard, &chakracore::Property::new(self.guard, "createNode")).into_function().unwrap();
-            println!("got function createNode");
-            let rv = function.call_with_this(self.guard, &self.object, &[
-                &chakracore::value::Number::new(self.guard, 3).into(),
-                &chakracore::value::Number::new(self.guard, -1).into(),
-                &chakracore::value::Number::new(self.guard, -1).into(),
-            ]);
-            println!("rv: {:?}", rv);
-            let object = rv.unwrap().into_object().unwrap();
-            SourceFileImpl { guard: self.guard, object: object } // TODO Printer
-        }
+// createNode(kind: SyntaxKind, pos?: number, end?: number): Node;
+    fn createNode(&self, guard: &chakracore::context::ContextGuard, kind: SyntaxKind, pos: Option<i32>, end: Option<i32> ) -> Box<Node> {
+        let SyntaxKind(kind_) = kind; 
+        let tsmod = self.object();
+        let function = tsmod.get(guard, &chakracore::Property::new(guard, "createNode")).into_function().unwrap();
+        let rv = function.call_with_this(guard, tsmod, &[
+            &chakracore::value::Number::new(guard, kind_).into(),
+            &chakracore::value::Number::new(guard, pos.unwrap_or(-1)).into(),
+            &chakracore::value::Number::new(guard, end.unwrap_or(-1)).into(),
+        ]);
+        let node = rv.unwrap().into_object().unwrap();
+        Box::new(ObjectBox { object: node })
     }
 
+// function createParameter(decorators: ReadonlyArray<Decorator> | undefined, modifiers: ReadonlyArray<Modifier> | undefined, dotDotDotToken: DotDotDotToken | undefined, name: string | BindingName, questionToken?: QuestionToken, type?: TypeNode, initializer?: Expression): ParameterDeclaration;
 
-    // interface TextRange {
-    //     pos: number;
-    //     end: number;
-    // }
-    trait TextRange {}
 
-    // interface Node extends TextRange {
-    //     kind: SyntaxKind;
-    //     flags: NodeFlags;
-    //     decorators?: NodeArray<Decorator>;
-    //     modifiers?: ModifiersArray;
-    //     parent?: Node;
-    // }
-    trait Node: TextRange {}
+}
 
-    // interface Declaration extends Node {
-    //     _declarationBrand: any;
-    // }
-    trait Declaration: Node {}
+impl TsMod for ObjectBox {}
 
-    // interface SourceFile extends Declaration {
-    //     kind: SyntaxKind.SourceFile;
-    //     statements: NodeArray<Statement>;
-    //     endOfFileToken: Token<SyntaxKind.EndOfFileToken>;
-    //     fileName: string;
-    //     text: string;
-    //     amdDependencies: AmdDependency[];
-    //     moduleName: string;
-    //     referencedFiles: FileReference[];
-    //     typeReferenceDirectives: FileReference[];
-    //     languageVariant: LanguageVariant;
-    //     isDeclarationFile: boolean;
-    //     /**
-    //      * lib.d.ts should have a reference comment like
-    //      *
-    //      *  /// <reference no-default-lib="true"/>
-    //      *
-    //      * If any other file has this comment, it signals not to include lib.d.ts
-    //      * because this containing file is intended to act as a default library.
-    //      */
-    //     hasNoDefaultLib: boolean;
-    //     languageVersion: ScriptTarget;
-    // }
-    // interface SourceFile {
-    //     getLineAndCharacterOfPosition(pos: number): LineAndCharacter;
-    //     getLineEndOfPosition(pos: number): number;
-    //     getLineStarts(): number[];
-    //     getPositionOfLineAndCharacter(line: number, character: number): number;
-    //     update(newText: string, textChangeRange: TextChangeRange): SourceFile;
-    // }
-    trait SourceFile: Declaration {
+pub trait Node : GetObject + TextRange {
+    fn kind(&self, guard: &chakracore::context::ContextGuard) -> i32 {
+        let kind = self.object().get(&guard, &chakracore::Property::new(&guard, "kind"));
+        kind.into_number().unwrap().value()
     }
+}
 
-    
-    pub struct SourceFileImpl<'a> {
-        guard: &'a chakracore::context::ContextGuard<'a>,
-        object: chakracore::value::Object,
-    }
+impl Node for ObjectBox {}
 
-    impl<'a> TextRange for SourceFileImpl<'a> {
-    }
-    impl<'a> Node for SourceFileImpl<'a> {
-    }
-    impl<'a> Declaration for SourceFileImpl<'a> {
-    }
-    impl<'a> SourceFile for SourceFileImpl<'a> {
-    }
+pub trait TextRange {
+
+}
+
+impl TextRange for ObjectBox {}
+
+pub trait Declaration: Node {
+
+}
+
+impl Declaration for ObjectBox {}
+
+pub trait SourceFile: Declaration {
+
+}
+
+impl SourceFile for ObjectBox {}
+
+pub trait Identifier {
+
+}
+
+impl Identifier for ObjectBox {}
 
 
 
-    // print
 
-        // function createSourceFile(fileName: string, sourceText: string, languageVersion: ScriptTarget, setParentNodes?: boolean, scriptKind?: ScriptKind): SourceFile;
+pub struct SyntaxKind(i32);
+impl SyntaxKind {
+    pub const Unknown: SyntaxKind = SyntaxKind(0);
+    pub const EndOfFileToken: SyntaxKind = SyntaxKind(1);
+    pub const SingleLineCommentTrivia: SyntaxKind = SyntaxKind(2);
+    pub const MultiLineCommentTrivia: SyntaxKind = SyntaxKind(3);
+    pub const NewLineTrivia: SyntaxKind = SyntaxKind(4);
+    pub const WhitespaceTrivia: SyntaxKind = SyntaxKind(5);
+    pub const ShebangTrivia: SyntaxKind = SyntaxKind(6);
+    pub const ConflictMarkerTrivia: SyntaxKind = SyntaxKind(7);
+    pub const NumericLiteral: SyntaxKind = SyntaxKind(8);
+    pub const StringLiteral: SyntaxKind = SyntaxKind(9);
+    pub const JsxText: SyntaxKind = SyntaxKind(10);
+    pub const JsxTextAllWhiteSpaces: SyntaxKind = SyntaxKind(11);
+    pub const RegularExpressionLiteral: SyntaxKind = SyntaxKind(12);
+    pub const NoSubstitutionTemplateLiteral: SyntaxKind = SyntaxKind(13);
+    pub const TemplateHead: SyntaxKind = SyntaxKind(14);
+    pub const TemplateMiddle: SyntaxKind = SyntaxKind(15);
+    pub const TemplateTail: SyntaxKind = SyntaxKind(16);
+    pub const OpenBraceToken: SyntaxKind = SyntaxKind(17);
+    pub const CloseBraceToken: SyntaxKind = SyntaxKind(18);
+    pub const OpenParenToken: SyntaxKind = SyntaxKind(19);
+    pub const CloseParenToken: SyntaxKind = SyntaxKind(20);
+    pub const OpenBracketToken: SyntaxKind = SyntaxKind(21);
+    pub const CloseBracketToken: SyntaxKind = SyntaxKind(22);
+    pub const DotToken: SyntaxKind = SyntaxKind(23);
+    pub const DotDotDotToken: SyntaxKind = SyntaxKind(24);
+    pub const SemicolonToken: SyntaxKind = SyntaxKind(25);
+    pub const CommaToken: SyntaxKind = SyntaxKind(26);
+    pub const LessThanToken: SyntaxKind = SyntaxKind(27);
+    pub const LessThanSlashToken: SyntaxKind = SyntaxKind(28);
+    pub const GreaterThanToken: SyntaxKind = SyntaxKind(29);
+    pub const LessThanEqualsToken: SyntaxKind = SyntaxKind(30);
+    pub const GreaterThanEqualsToken: SyntaxKind = SyntaxKind(31);
+    pub const EqualsEqualsToken: SyntaxKind = SyntaxKind(32);
+    pub const ExclamationEqualsToken: SyntaxKind = SyntaxKind(33);
+    pub const EqualsEqualsEqualsToken: SyntaxKind = SyntaxKind(34);
+    pub const ExclamationEqualsEqualsToken: SyntaxKind = SyntaxKind(35);
+    pub const EqualsGreaterThanToken: SyntaxKind = SyntaxKind(36);
+    pub const PlusToken: SyntaxKind = SyntaxKind(37);
+    pub const MinusToken: SyntaxKind = SyntaxKind(38);
+    pub const AsteriskToken: SyntaxKind = SyntaxKind(39);
+    pub const AsteriskAsteriskToken: SyntaxKind = SyntaxKind(40);
+    pub const SlashToken: SyntaxKind = SyntaxKind(41);
+    pub const PercentToken: SyntaxKind = SyntaxKind(42);
+    pub const PlusPlusToken: SyntaxKind = SyntaxKind(43);
+    pub const MinusMinusToken: SyntaxKind = SyntaxKind(44);
+    pub const LessThanLessThanToken: SyntaxKind = SyntaxKind(45);
+    pub const GreaterThanGreaterThanToken: SyntaxKind = SyntaxKind(46);
+    pub const GreaterThanGreaterThanGreaterThanToken: SyntaxKind = SyntaxKind(47);
+    pub const AmpersandToken: SyntaxKind = SyntaxKind(48);
+    pub const BarToken: SyntaxKind = SyntaxKind(49);
+    pub const CaretToken: SyntaxKind = SyntaxKind(50);
+    pub const ExclamationToken: SyntaxKind = SyntaxKind(51);
+    pub const TildeToken: SyntaxKind = SyntaxKind(52);
+    pub const AmpersandAmpersandToken: SyntaxKind = SyntaxKind(53);
+    pub const BarBarToken: SyntaxKind = SyntaxKind(54);
+    pub const QuestionToken: SyntaxKind = SyntaxKind(55);
+    pub const ColonToken: SyntaxKind = SyntaxKind(56);
+    pub const AtToken: SyntaxKind = SyntaxKind(57);
+    pub const EqualsToken: SyntaxKind = SyntaxKind(58);
+    pub const PlusEqualsToken: SyntaxKind = SyntaxKind(59);
+    pub const MinusEqualsToken: SyntaxKind = SyntaxKind(60);
+    pub const AsteriskEqualsToken: SyntaxKind = SyntaxKind(61);
+    pub const AsteriskAsteriskEqualsToken: SyntaxKind = SyntaxKind(62);
+    pub const SlashEqualsToken: SyntaxKind = SyntaxKind(63);
+    pub const PercentEqualsToken: SyntaxKind = SyntaxKind(64);
+    pub const LessThanLessThanEqualsToken: SyntaxKind = SyntaxKind(65);
+    pub const GreaterThanGreaterThanEqualsToken: SyntaxKind = SyntaxKind(66);
+    pub const GreaterThanGreaterThanGreaterThanEqualsToken: SyntaxKind = SyntaxKind(67);
+    pub const AmpersandEqualsToken: SyntaxKind = SyntaxKind(68);
+    pub const BarEqualsToken: SyntaxKind = SyntaxKind(69);
+    pub const CaretEqualsToken: SyntaxKind = SyntaxKind(70);
+    pub const Identifier: SyntaxKind = SyntaxKind(71);
+    pub const BreakKeyword: SyntaxKind = SyntaxKind(72);
+    pub const CaseKeyword: SyntaxKind = SyntaxKind(73);
+    pub const CatchKeyword: SyntaxKind = SyntaxKind(74);
+    pub const ClassKeyword: SyntaxKind = SyntaxKind(75);
+    pub const ConstKeyword: SyntaxKind = SyntaxKind(76);
+    pub const ContinueKeyword: SyntaxKind = SyntaxKind(77);
+    pub const DebuggerKeyword: SyntaxKind = SyntaxKind(78);
+    pub const DefaultKeyword: SyntaxKind = SyntaxKind(79);
+    pub const DeleteKeyword: SyntaxKind = SyntaxKind(80);
+    pub const DoKeyword: SyntaxKind = SyntaxKind(81);
+    pub const ElseKeyword: SyntaxKind = SyntaxKind(82);
+    pub const traitKeyword: SyntaxKind = SyntaxKind(83);
+    pub const ExportKeyword: SyntaxKind = SyntaxKind(84);
+    pub const ExtendsKeyword: SyntaxKind = SyntaxKind(85);
+    pub const FalseKeyword: SyntaxKind = SyntaxKind(86);
+    pub const FinallyKeyword: SyntaxKind = SyntaxKind(87);
+    pub const ForKeyword: SyntaxKind = SyntaxKind(88);
+    pub const FunctionKeyword: SyntaxKind = SyntaxKind(89);
+    pub const IfKeyword: SyntaxKind = SyntaxKind(90);
+    pub const ImportKeyword: SyntaxKind = SyntaxKind(91);
+    pub const InKeyword: SyntaxKind = SyntaxKind(92);
+    pub const InstanceOfKeyword: SyntaxKind = SyntaxKind(93);
+    pub const NewKeyword: SyntaxKind = SyntaxKind(94);
+    pub const NullKeyword: SyntaxKind = SyntaxKind(95);
+    pub const ReturnKeyword: SyntaxKind = SyntaxKind(96);
+    pub const SuperKeyword: SyntaxKind = SyntaxKind(97);
+    pub const SwitchKeyword: SyntaxKind = SyntaxKind(98);
+    pub const ThisKeyword: SyntaxKind = SyntaxKind(99);
+    pub const ThrowKeyword: SyntaxKind = SyntaxKind(100);
+    pub const TrueKeyword: SyntaxKind = SyntaxKind(101);
+    pub const TryKeyword: SyntaxKind = SyntaxKind(102);
+    pub const TypeOfKeyword: SyntaxKind = SyntaxKind(103);
+    pub const VarKeyword: SyntaxKind = SyntaxKind(104);
+    pub const VoidKeyword: SyntaxKind = SyntaxKind(105);
+    pub const WhileKeyword: SyntaxKind = SyntaxKind(106);
+    pub const WithKeyword: SyntaxKind = SyntaxKind(107);
+    pub const ImplementsKeyword: SyntaxKind = SyntaxKind(108);
+    pub const InterfaceKeyword: SyntaxKind = SyntaxKind(109);
+    pub const LetKeyword: SyntaxKind = SyntaxKind(110);
+    pub const PackageKeyword: SyntaxKind = SyntaxKind(111);
+    pub const PrivateKeyword: SyntaxKind = SyntaxKind(112);
+    pub const ProtectedKeyword: SyntaxKind = SyntaxKind(113);
+    pub const PublicKeyword: SyntaxKind = SyntaxKind(114);
+    pub const StaticKeyword: SyntaxKind = SyntaxKind(115);
+    pub const YieldKeyword: SyntaxKind = SyntaxKind(116);
+    pub const AbstractKeyword: SyntaxKind = SyntaxKind(117);
+    pub const AsKeyword: SyntaxKind = SyntaxKind(118);
+    pub const AnyKeyword: SyntaxKind = SyntaxKind(119);
+    pub const AsyncKeyword: SyntaxKind = SyntaxKind(120);
+    pub const AwaitKeyword: SyntaxKind = SyntaxKind(121);
+    pub const BooleanKeyword: SyntaxKind = SyntaxKind(122);
+    pub const ConstructorKeyword: SyntaxKind = SyntaxKind(123);
+    pub const DeclareKeyword: SyntaxKind = SyntaxKind(124);
+    pub const GetKeyword: SyntaxKind = SyntaxKind(125);
+    pub const IsKeyword: SyntaxKind = SyntaxKind(126);
+    pub const KeyOfKeyword: SyntaxKind = SyntaxKind(127);
+    pub const ModuleKeyword: SyntaxKind = SyntaxKind(128);
+    pub const NamespaceKeyword: SyntaxKind = SyntaxKind(129);
+    pub const NeverKeyword: SyntaxKind = SyntaxKind(130);
+    pub const ReadonlyKeyword: SyntaxKind = SyntaxKind(131);
+    pub const RequireKeyword: SyntaxKind = SyntaxKind(132);
+    pub const NumberKeyword: SyntaxKind = SyntaxKind(133);
+    pub const ObjectKeyword: SyntaxKind = SyntaxKind(134);
+    pub const SetKeyword: SyntaxKind = SyntaxKind(135);
+    pub const StringKeyword: SyntaxKind = SyntaxKind(136);
+    pub const SymbolKeyword: SyntaxKind = SyntaxKind(137);
+    pub const TypeKeyword: SyntaxKind = SyntaxKind(138);
+    pub const UndefinedKeyword: SyntaxKind = SyntaxKind(139);
+    pub const FromKeyword: SyntaxKind = SyntaxKind(140);
+    pub const GlobalKeyword: SyntaxKind = SyntaxKind(141);
+    pub const OfKeyword: SyntaxKind = SyntaxKind(142);
+    pub const QualifiedName: SyntaxKind = SyntaxKind(143);
+    pub const ComputedPropertyName: SyntaxKind = SyntaxKind(144);
+    pub const TypeParameter: SyntaxKind = SyntaxKind(145);
+    pub const Parameter: SyntaxKind = SyntaxKind(146);
+    pub const Decorator: SyntaxKind = SyntaxKind(147);
+    pub const PropertySignature: SyntaxKind = SyntaxKind(148);
+    pub const PropertyDeclaration: SyntaxKind = SyntaxKind(149);
+    pub const MethodSignature: SyntaxKind = SyntaxKind(150);
+    pub const MethodDeclaration: SyntaxKind = SyntaxKind(151);
+    pub const Constructor: SyntaxKind = SyntaxKind(152);
+    pub const GetAccessor: SyntaxKind = SyntaxKind(153);
+    pub const SetAccessor: SyntaxKind = SyntaxKind(154);
+    pub const CallSignature: SyntaxKind = SyntaxKind(155);
+    pub const ConstructSignature: SyntaxKind = SyntaxKind(156);
+    pub const IndexSignature: SyntaxKind = SyntaxKind(157);
+    pub const TypePredicate: SyntaxKind = SyntaxKind(158);
+    pub const TypeReference: SyntaxKind = SyntaxKind(159);
+    pub const FunctionType: SyntaxKind = SyntaxKind(160);
+    pub const ConstructorType: SyntaxKind = SyntaxKind(161);
+    pub const TypeQuery: SyntaxKind = SyntaxKind(162);
+    pub const TypeLiteral: SyntaxKind = SyntaxKind(163);
+    pub const ArrayType: SyntaxKind = SyntaxKind(164);
+    pub const TupleType: SyntaxKind = SyntaxKind(165);
+    pub const UnionType: SyntaxKind = SyntaxKind(166);
+    pub const IntersectionType: SyntaxKind = SyntaxKind(167);
+    pub const ParenthesizedType: SyntaxKind = SyntaxKind(168);
+    pub const ThisType: SyntaxKind = SyntaxKind(169);
+    pub const TypeOperator: SyntaxKind = SyntaxKind(170);
+    pub const IndexedAccessType: SyntaxKind = SyntaxKind(171);
+    pub const MappedType: SyntaxKind = SyntaxKind(172);
+    pub const LiteralType: SyntaxKind = SyntaxKind(173);
+    pub const ObjectBindingPattern: SyntaxKind = SyntaxKind(174);
+    pub const ArrayBindingPattern: SyntaxKind = SyntaxKind(175);
+    pub const BindingElement: SyntaxKind = SyntaxKind(176);
+    pub const ArrayLiteralExpression: SyntaxKind = SyntaxKind(177);
+    pub const ObjectLiteralExpression: SyntaxKind = SyntaxKind(178);
+    pub const PropertyAccessExpression: SyntaxKind = SyntaxKind(179);
+    pub const ElementAccessExpression: SyntaxKind = SyntaxKind(180);
+    pub const CallExpression: SyntaxKind = SyntaxKind(181);
+    pub const NewExpression: SyntaxKind = SyntaxKind(182);
+    pub const TaggedTemplateExpression: SyntaxKind = SyntaxKind(183);
+    pub const TypeAssertionExpression: SyntaxKind = SyntaxKind(184);
+    pub const ParenthesizedExpression: SyntaxKind = SyntaxKind(185);
+    pub const FunctionExpression: SyntaxKind = SyntaxKind(186);
+    pub const ArrowFunction: SyntaxKind = SyntaxKind(187);
+    pub const DeleteExpression: SyntaxKind = SyntaxKind(188);
+    pub const TypeOfExpression: SyntaxKind = SyntaxKind(189);
+    pub const VoidExpression: SyntaxKind = SyntaxKind(190);
+    pub const AwaitExpression: SyntaxKind = SyntaxKind(191);
+    pub const PrefixUnaryExpression: SyntaxKind = SyntaxKind(192);
+    pub const PostfixUnaryExpression: SyntaxKind = SyntaxKind(193);
+    pub const BinaryExpression: SyntaxKind = SyntaxKind(194);
+    pub const ConditionalExpression: SyntaxKind = SyntaxKind(195);
+    pub const TemplateExpression: SyntaxKind = SyntaxKind(196);
+    pub const YieldExpression: SyntaxKind = SyntaxKind(197);
+    pub const SpreadElement: SyntaxKind = SyntaxKind(198);
+    pub const ClassExpression: SyntaxKind = SyntaxKind(199);
+    pub const OmittedExpression: SyntaxKind = SyntaxKind(200);
+    pub const ExpressionWithTypeArguments: SyntaxKind = SyntaxKind(201);
+    pub const AsExpression: SyntaxKind = SyntaxKind(202);
+    pub const NonNullExpression: SyntaxKind = SyntaxKind(203);
+    pub const MetaProperty: SyntaxKind = SyntaxKind(204);
+    pub const TemplateSpan: SyntaxKind = SyntaxKind(205);
+    pub const SemicolonClassElement: SyntaxKind = SyntaxKind(206);
+    pub const Block: SyntaxKind = SyntaxKind(207);
+    pub const VariableStatement: SyntaxKind = SyntaxKind(208);
+    pub const EmptyStatement: SyntaxKind = SyntaxKind(209);
+    pub const ExpressionStatement: SyntaxKind = SyntaxKind(210);
+    pub const IfStatement: SyntaxKind = SyntaxKind(211);
+    pub const DoStatement: SyntaxKind = SyntaxKind(212);
+    pub const WhileStatement: SyntaxKind = SyntaxKind(213);
+    pub const ForStatement: SyntaxKind = SyntaxKind(214);
+    pub const ForInStatement: SyntaxKind = SyntaxKind(215);
+    pub const ForOfStatement: SyntaxKind = SyntaxKind(216);
+    pub const ContinueStatement: SyntaxKind = SyntaxKind(217);
+    pub const BreakStatement: SyntaxKind = SyntaxKind(218);
+    pub const ReturnStatement: SyntaxKind = SyntaxKind(219);
+    pub const WithStatement: SyntaxKind = SyntaxKind(220);
+    pub const SwitchStatement: SyntaxKind = SyntaxKind(221);
+    pub const LabeledStatement: SyntaxKind = SyntaxKind(222);
+    pub const ThrowStatement: SyntaxKind = SyntaxKind(223);
+    pub const TryStatement: SyntaxKind = SyntaxKind(224);
+    pub const DebuggerStatement: SyntaxKind = SyntaxKind(225);
+    pub const VariableDeclaration: SyntaxKind = SyntaxKind(226);
+    pub const VariableDeclarationList: SyntaxKind = SyntaxKind(227);
+    pub const FunctionDeclaration: SyntaxKind = SyntaxKind(228);
+    pub const ClassDeclaration: SyntaxKind = SyntaxKind(229);
+    pub const InterfaceDeclaration: SyntaxKind = SyntaxKind(230);
+    pub const TypeAliasDeclaration: SyntaxKind = SyntaxKind(231);
+    pub const traitDeclaration: SyntaxKind = SyntaxKind(232);
+    pub const ModuleDeclaration: SyntaxKind = SyntaxKind(233);
+    pub const ModuleBlock: SyntaxKind = SyntaxKind(234);
+    pub const CaseBlock: SyntaxKind = SyntaxKind(235);
+    pub const NamespaceExportDeclaration: SyntaxKind = SyntaxKind(236);
+    pub const ImportEqualsDeclaration: SyntaxKind = SyntaxKind(237);
+    pub const ImportDeclaration: SyntaxKind = SyntaxKind(238);
+    pub const ImportClause: SyntaxKind = SyntaxKind(239);
+    pub const NamespaceImport: SyntaxKind = SyntaxKind(240);
+    pub const NamedImports: SyntaxKind = SyntaxKind(241);
+    pub const ImportSpecifier: SyntaxKind = SyntaxKind(242);
+    pub const ExportAssignment: SyntaxKind = SyntaxKind(243);
+    pub const ExportDeclaration: SyntaxKind = SyntaxKind(244);
+    pub const NamedExports: SyntaxKind = SyntaxKind(245);
+    pub const ExportSpecifier: SyntaxKind = SyntaxKind(246);
+    pub const MissingDeclaration: SyntaxKind = SyntaxKind(247);
+    pub const ExternalModuleReference: SyntaxKind = SyntaxKind(248);
+    pub const JsxElement: SyntaxKind = SyntaxKind(249);
+    pub const JsxSelfClosingElement: SyntaxKind = SyntaxKind(250);
+    pub const JsxOpeningElement: SyntaxKind = SyntaxKind(251);
+    pub const JsxClosingElement: SyntaxKind = SyntaxKind(252);
+    pub const JsxAttribute: SyntaxKind = SyntaxKind(253);
+    pub const JsxAttributes: SyntaxKind = SyntaxKind(254);
+    pub const JsxSpreadAttribute: SyntaxKind = SyntaxKind(255);
+    pub const JsxExpression: SyntaxKind = SyntaxKind(256);
+    pub const CaseClause: SyntaxKind = SyntaxKind(257);
+    pub const DefaultClause: SyntaxKind = SyntaxKind(258);
+    pub const HeritageClause: SyntaxKind = SyntaxKind(259);
+    pub const CatchClause: SyntaxKind = SyntaxKind(260);
+    pub const PropertyAssignment: SyntaxKind = SyntaxKind(261);
+    pub const ShorthandPropertyAssignment: SyntaxKind = SyntaxKind(262);
+    pub const SpreadAssignment: SyntaxKind = SyntaxKind(263);
+    pub const traitMember: SyntaxKind = SyntaxKind(264);
+    pub const SourceFile: SyntaxKind = SyntaxKind(265);
+    pub const Bundle: SyntaxKind = SyntaxKind(266);
+    pub const JSDocTypeExpression: SyntaxKind = SyntaxKind(267);
+    pub const JSDocAllType: SyntaxKind = SyntaxKind(268);
+    pub const JSDocUnknownType: SyntaxKind = SyntaxKind(269);
+    pub const JSDocArrayType: SyntaxKind = SyntaxKind(270);
+    pub const JSDocUnionType: SyntaxKind = SyntaxKind(271);
+    pub const JSDocTupleType: SyntaxKind = SyntaxKind(272);
+    pub const JSDocNullableType: SyntaxKind = SyntaxKind(273);
+    pub const JSDocNonNullableType: SyntaxKind = SyntaxKind(274);
+    pub const JSDocRecordType: SyntaxKind = SyntaxKind(275);
+    pub const JSDocRecordMember: SyntaxKind = SyntaxKind(276);
+    pub const JSDocTypeReference: SyntaxKind = SyntaxKind(277);
+    pub const JSDocOptionalType: SyntaxKind = SyntaxKind(278);
+    pub const JSDocFunctionType: SyntaxKind = SyntaxKind(279);
+    pub const JSDocVariadicType: SyntaxKind = SyntaxKind(280);
+    pub const JSDocConstructorType: SyntaxKind = SyntaxKind(281);
+    pub const JSDocThisType: SyntaxKind = SyntaxKind(282);
+    pub const JSDocComment: SyntaxKind = SyntaxKind(283);
+    pub const JSDocTag: SyntaxKind = SyntaxKind(284);
+    pub const JSDocAugmentsTag: SyntaxKind = SyntaxKind(285);
+    pub const JSDocClassTag: SyntaxKind = SyntaxKind(286);
+    pub const JSDocParameterTag: SyntaxKind = SyntaxKind(287);
+    pub const JSDocReturnTag: SyntaxKind = SyntaxKind(288);
+    pub const JSDocTypeTag: SyntaxKind = SyntaxKind(289);
+    pub const JSDocTemplateTag: SyntaxKind = SyntaxKind(290);
+    pub const JSDocTypedefTag: SyntaxKind = SyntaxKind(291);
+    pub const JSDocPropertyTag: SyntaxKind = SyntaxKind(292);
+    pub const JSDocTypeLiteral: SyntaxKind = SyntaxKind(293);
+    pub const JSDocLiteralType: SyntaxKind = SyntaxKind(294);
+    pub const SyntaxList: SyntaxKind = SyntaxKind(295);
+    pub const NotEmittedStatement: SyntaxKind = SyntaxKind(296);
+    pub const PartiallyEmittedExpression: SyntaxKind = SyntaxKind(297);
+    pub const CommaListExpression: SyntaxKind = SyntaxKind(298);
+    pub const MergeDeclarationMarker: SyntaxKind = SyntaxKind(299);
+    pub const EndOfDeclarationMarker: SyntaxKind = SyntaxKind(300);
+    pub const Count: SyntaxKind = SyntaxKind(301);
+    pub const FirstAssignment: SyntaxKind = SyntaxKind(58);
+    pub const LastAssignment: SyntaxKind = SyntaxKind(70);
+    pub const FirstCompoundAssignment: SyntaxKind = SyntaxKind(59);
+    pub const LastCompoundAssignment: SyntaxKind = SyntaxKind(70);
+    pub const FirstReservedWord: SyntaxKind = SyntaxKind(72);
+    pub const LastReservedWord: SyntaxKind = SyntaxKind(107);
+    pub const FirstKeyword: SyntaxKind = SyntaxKind(72);
+    pub const LastKeyword: SyntaxKind = SyntaxKind(142);
+    pub const FirstFutureReservedWord: SyntaxKind = SyntaxKind(108);
+    pub const LastFutureReservedWord: SyntaxKind = SyntaxKind(116);
+    pub const FirstTypeNode: SyntaxKind = SyntaxKind(158);
+    pub const LastTypeNode: SyntaxKind = SyntaxKind(173);
+    pub const FirstPunctuation: SyntaxKind = SyntaxKind(17);
+    pub const LastPunctuation: SyntaxKind = SyntaxKind(70);
+    pub const FirstToken: SyntaxKind = SyntaxKind(0);
+    pub const LastToken: SyntaxKind = SyntaxKind(142);
+    pub const FirstTriviaToken: SyntaxKind = SyntaxKind(2);
+    pub const LastTriviaToken: SyntaxKind = SyntaxKind(7);
+    pub const FirstLiteralToken: SyntaxKind = SyntaxKind(8);
+    pub const LastLiteralToken: SyntaxKind = SyntaxKind(13);
+    pub const FirstTemplateToken: SyntaxKind = SyntaxKind(13);
+    pub const LastTemplateToken: SyntaxKind = SyntaxKind(16);
+    pub const FirstBinaryOperator: SyntaxKind = SyntaxKind(27);
+    pub const LastBinaryOperator: SyntaxKind = SyntaxKind(70);
+    pub const FirstNode: SyntaxKind = SyntaxKind(143);
+    pub const FirstJSDocNode: SyntaxKind = SyntaxKind(267);
+    pub const LastJSDocNode: SyntaxKind = SyntaxKind(294);
+    pub const FirstJSDocTagNode: SyntaxKind = SyntaxKind(284);
+    pub const LastJSDocTagNode: SyntaxKind = SyntaxKind(294);
+}
+pub struct NodeFlags(i32);
+impl NodeFlags {
+    pub const None: i32 = 0;
+    pub const Let: i32 = 1;
+    pub const Const: i32 = 2;
+    pub const NestedNamespace: i32 = 4;
+    pub const Synthesized: i32 = 8;
+    pub const Namespace: i32 = 16;
+    pub const ExportContext: i32 = 32;
+    pub const ContainsThis: i32 = 64;
+    pub const HasImplicitReturn: i32 = 128;
+    pub const HasExplicitReturn: i32 = 256;
+    pub const GlobalAugmentation: i32 = 512;
+    pub const HasAsyncFunctions: i32 = 1024;
+    pub const DisallowInContext: i32 = 2048;
+    pub const YieldContext: i32 = 4096;
+    pub const DecoratorContext: i32 = 8192;
+    pub const AwaitContext: i32 = 16384;
+    pub const ThisNodeHasError: i32 = 32768;
+    pub const JavaScriptFile: i32 = 65536;
+    pub const ThisNodeOrAnySubNodesHasError: i32 = 131072;
+    pub const HasAggregatedChildData: i32 = 262144;
+    pub const BlockScoped: i32 = 3;
+    pub const ReachabilityCheckFlags: i32 = 384;
+    pub const ReachabilityAndEmitFlags: i32 = 1408;
+    pub const ContextFlags: i32 = 96256;
+    pub const TypeExcludesFlags: i32 = 20480;
+}
+pub struct ModifierFlags(i32);
+impl ModifierFlags {
+    pub const None: i32 = 0;
+    pub const Export: i32 = 1;
+    pub const Ambient: i32 = 2;
+    pub const Public: i32 = 4;
+    pub const Private: i32 = 8;
+    pub const Protected: i32 = 16;
+    pub const Static: i32 = 32;
+    pub const Readonly: i32 = 64;
+    pub const Abstract: i32 = 128;
+    pub const Async: i32 = 256;
+    pub const Default: i32 = 512;
+    pub const Const: i32 = 2048;
+    pub const HasComputedFlags: i32 = 536870912;
+    pub const AccessibilityModifier: i32 = 28;
+    pub const ParameterPropertyModifier: i32 = 92;
+    pub const NonPublicAccessibilityModifier: i32 = 24;
+    pub const TypeScriptModifier: i32 = 2270;
+    pub const ExportDefault: i32 = 513;
+}
+pub struct JsxFlags(i32);
+impl JsxFlags {
+    pub const None: i32 = 0;
+    /** An element from a named property of the JSX.IntrinsicElements interface */
+    pub const IntrinsicNamedElement: i32 = 1;
+    /** An element inferred from the string index signature of the JSX.IntrinsicElements interface */
+    pub const IntrinsicIndexedElement: i32 = 2;
+    pub const IntrinsicElement: i32 = 3;
+}
 
-    // const sf = ts.createSourceFile(filename, source, ts.ScriptTarget.Latest);
-    // ts.forEachChild(root, node => {
+pub struct ModuleKind(i32);
+impl ModuleKind {
+    pub const None: i32 = 0;
+    pub const CommonJS: i32 = 1;
+    pub const AMD: i32 = 2;
+    pub const UMD: i32 = 3;
+    pub const System: i32 = 4;
+    pub const ES2015: i32 = 5;
+    pub const ESNext: i32 = 6;
+}
+pub struct JsxEmit(i32);
+impl JsxEmit {
+    pub const None: i32 = 0;
+    pub const Preserve: i32 = 1;
+    pub const React: i32 = 2;
+    pub const ReactNative: i32 = 3;
+}
+pub struct NewLineKind(i32);
+impl NewLineKind {
+    pub const CarriageReturnLineFeed: i32 = 0;
+    pub const LineFeed: i32 = 1;
+}
+pub struct ScriptKind(i32);
+impl ScriptKind {
+    pub const Unknown: i32 = 0;
+    pub const JS: i32 = 1;
+    pub const JSX: i32 = 2;
+    pub const TS: i32 = 3;
+    pub const TSX: i32 = 4;
+    pub const External: i32 = 5;
+}
+pub struct ScriptTarget(i32);
+impl ScriptTarget {
+    pub const ES3: i32 = 0;
+    pub const ES5: i32 = 1;
+    pub const ES2015: i32 = 2;
+    pub const ES2016: i32 = 3;
+    pub const ES2017: i32 = 4;
+    pub const ESNext: i32 = 5;
+    pub const Latest: i32 = 5;
+}
+pub struct LanguageVariant(i32);
+impl LanguageVariant {
+    pub const Standard: i32 = 0;
+    pub const JSX: i32 = 1;
+}
+pub struct WatchDirectoryFlags(i32);
+impl WatchDirectoryFlags {
+    pub const None: i32 = 0;
+    pub const Recursive: i32 = 1;
+}
 
-    // ts.SyntaxKind) {
-    //     return kind === ts.SyntaxKind.ModuleDeclaration
+pub struct Extension(i32);
+impl Extension {
+    pub const Ts: i32 = 0;
+    pub const Tsx: i32 = 1;
+    pub const Dts: i32 = 2;
+    pub const Js: i32 = 3;
+    pub const Jsx: i32 = 4;
+    pub const LastTypeScriptExtension: i32 = 2;
+}
 
+pub struct EmitFlags(i32);
+impl EmitFlags {
+    pub const SingleLine: i32 = 1;
+    pub const AdviseOnEmitNode: i32 = 2;
+    pub const NoSubstitution: i32 = 4;
+    pub const CapturesThis: i32 = 8;
+    pub const NoLeadingSourceMap: i32 = 16;
+    pub const NoTrailingSourceMap: i32 = 32;
+    pub const NoSourceMap: i32 = 48;
+    pub const NoNestedSourceMaps: i32 = 64;
+    pub const NoTokenLeadingSourceMaps: i32 = 128;
+    pub const NoTokenTrailingSourceMaps: i32 = 256;
+    pub const NoTokenSourceMaps: i32 = 384;
+    pub const NoLeadingComments: i32 = 512;
+    pub const NoTrailingComments: i32 = 1024;
+    pub const NoComments: i32 = 1536;
+    pub const NoNestedComments: i32 = 2048;
+    pub const HelperName: i32 = 4096;
+    pub const ExportName: i32 = 8192;
+    pub const LocalName: i32 = 16384;
+    pub const InternalName: i32 = 32768;
+    pub const Indented: i32 = 65536;
+    pub const NoIndentation: i32 = 131072;
+    pub const AsyncFunctionBody: i32 = 262144;
+    pub const ReuseTempVariableScope: i32 = 524288;
+    pub const CustomPrologue: i32 = 1048576;
+    pub const NoHoisting: i32 = 2097152;
+    pub const HasEndOfDeclarationMarker: i32 = 4194304;
+    pub const Iterator: i32 = 8388608;
+    pub const NoAsciiEscaping: i32 = 16777216;
+}
 
-
-    // create
-
-    //     return ts.createIdentifier("abc");
-    // }
-
-    // const resultFile = ts.createSourceFile("someFileName.ts", "", ts.ScriptTarget.Latest, /*setParentNodes*/ false, ts.ScriptKind.TS);
-    // const printer = ts.createPrinter({
-    //     newLine: ts.NewLineKind.LineFeed,
-    // });
-    // const result = printer.printNode(ts.EmitHint.Unspecified, makeFactorialFunction(), resultFile);
-
-    pub enum SyntaxKind {
-        Unknown = 0,
-        EndOfFileToken = 1,
-        SingleLineCommentTrivia = 2,
-        MultiLineCommentTrivia = 3,
-        NewLineTrivia = 4,
-        WhitespaceTrivia = 5,
-        ShebangTrivia = 6,
-        ConflictMarkerTrivia = 7,
-        NumericLiteral = 8,
-        StringLiteral = 9,
-        JsxText = 10,
-        JsxTextAllWhiteSpaces = 11,
-        RegularExpressionLiteral = 12,
-        NoSubstitutionTemplateLiteral = 13,
-        TemplateHead = 14,
-        TemplateMiddle = 15,
-        TemplateTail = 16,
-        OpenBraceToken = 17,
-        CloseBraceToken = 18,
-        OpenParenToken = 19,
-        CloseParenToken = 20,
-        OpenBracketToken = 21,
-        CloseBracketToken = 22,
-        DotToken = 23,
-        DotDotDotToken = 24,
-        SemicolonToken = 25,
-        CommaToken = 26,
-        LessThanToken = 27,
-        LessThanSlashToken = 28,
-        GreaterThanToken = 29,
-        LessThanEqualsToken = 30,
-        GreaterThanEqualsToken = 31,
-        EqualsEqualsToken = 32,
-        ExclamationEqualsToken = 33,
-        EqualsEqualsEqualsToken = 34,
-        ExclamationEqualsEqualsToken = 35,
-        EqualsGreaterThanToken = 36,
-        PlusToken = 37,
-        MinusToken = 38,
-        AsteriskToken = 39,
-        AsteriskAsteriskToken = 40,
-        SlashToken = 41,
-        PercentToken = 42,
-        PlusPlusToken = 43,
-        MinusMinusToken = 44,
-        LessThanLessThanToken = 45,
-        GreaterThanGreaterThanToken = 46,
-        GreaterThanGreaterThanGreaterThanToken = 47,
-        AmpersandToken = 48,
-        BarToken = 49,
-        CaretToken = 50,
-        ExclamationToken = 51,
-        TildeToken = 52,
-        AmpersandAmpersandToken = 53,
-        BarBarToken = 54,
-        QuestionToken = 55,
-        ColonToken = 56,
-        AtToken = 57,
-        EqualsToken = 58,
-        PlusEqualsToken = 59,
-        MinusEqualsToken = 60,
-        AsteriskEqualsToken = 61,
-        AsteriskAsteriskEqualsToken = 62,
-        SlashEqualsToken = 63,
-        PercentEqualsToken = 64,
-        LessThanLessThanEqualsToken = 65,
-        GreaterThanGreaterThanEqualsToken = 66,
-        GreaterThanGreaterThanGreaterThanEqualsToken = 67,
-        AmpersandEqualsToken = 68,
-        BarEqualsToken = 69,
-        CaretEqualsToken = 70,
-        Identifier = 71,
-        BreakKeyword = 72,
-        CaseKeyword = 73,
-        CatchKeyword = 74,
-        ClassKeyword = 75,
-        ConstKeyword = 76,
-        ContinueKeyword = 77,
-        DebuggerKeyword = 78,
-        DefaultKeyword = 79,
-        DeleteKeyword = 80,
-        DoKeyword = 81,
-        ElseKeyword = 82,
-        enumKeyword = 83,
-        ExportKeyword = 84,
-        ExtendsKeyword = 85,
-        FalseKeyword = 86,
-        FinallyKeyword = 87,
-        ForKeyword = 88,
-        FunctionKeyword = 89,
-        IfKeyword = 90,
-        ImportKeyword = 91,
-        InKeyword = 92,
-        InstanceOfKeyword = 93,
-        NewKeyword = 94,
-        NullKeyword = 95,
-        ReturnKeyword = 96,
-        SuperKeyword = 97,
-        SwitchKeyword = 98,
-        ThisKeyword = 99,
-        ThrowKeyword = 100,
-        TrueKeyword = 101,
-        TryKeyword = 102,
-        TypeOfKeyword = 103,
-        VarKeyword = 104,
-        VoidKeyword = 105,
-        WhileKeyword = 106,
-        WithKeyword = 107,
-        ImplementsKeyword = 108,
-        InterfaceKeyword = 109,
-        LetKeyword = 110,
-        PackageKeyword = 111,
-        PrivateKeyword = 112,
-        ProtectedKeyword = 113,
-        PublicKeyword = 114,
-        StaticKeyword = 115,
-        YieldKeyword = 116,
-        AbstractKeyword = 117,
-        AsKeyword = 118,
-        AnyKeyword = 119,
-        AsyncKeyword = 120,
-        AwaitKeyword = 121,
-        BooleanKeyword = 122,
-        ConstructorKeyword = 123,
-        DeclareKeyword = 124,
-        GetKeyword = 125,
-        IsKeyword = 126,
-        KeyOfKeyword = 127,
-        ModuleKeyword = 128,
-        NamespaceKeyword = 129,
-        NeverKeyword = 130,
-        ReadonlyKeyword = 131,
-        RequireKeyword = 132,
-        NumberKeyword = 133,
-        ObjectKeyword = 134,
-        SetKeyword = 135,
-        StringKeyword = 136,
-        SymbolKeyword = 137,
-        TypeKeyword = 138,
-        UndefinedKeyword = 139,
-        FromKeyword = 140,
-        GlobalKeyword = 141,
-        OfKeyword = 142,
-        QualifiedName = 143,
-        ComputedPropertyName = 144,
-        TypeParameter = 145,
-        Parameter = 146,
-        Decorator = 147,
-        PropertySignature = 148,
-        PropertyDeclaration = 149,
-        MethodSignature = 150,
-        MethodDeclaration = 151,
-        Constructor = 152,
-        GetAccessor = 153,
-        SetAccessor = 154,
-        CallSignature = 155,
-        ConstructSignature = 156,
-        IndexSignature = 157,
-        TypePredicate = 158,
-        TypeReference = 159,
-        FunctionType = 160,
-        ConstructorType = 161,
-        TypeQuery = 162,
-        TypeLiteral = 163,
-        ArrayType = 164,
-        TupleType = 165,
-        UnionType = 166,
-        IntersectionType = 167,
-        ParenthesizedType = 168,
-        ThisType = 169,
-        TypeOperator = 170,
-        IndexedAccessType = 171,
-        MappedType = 172,
-        LiteralType = 173,
-        ObjectBindingPattern = 174,
-        ArrayBindingPattern = 175,
-        BindingElement = 176,
-        ArrayLiteralExpression = 177,
-        ObjectLiteralExpression = 178,
-        PropertyAccessExpression = 179,
-        ElementAccessExpression = 180,
-        CallExpression = 181,
-        NewExpression = 182,
-        TaggedTemplateExpression = 183,
-        TypeAssertionExpression = 184,
-        ParenthesizedExpression = 185,
-        FunctionExpression = 186,
-        ArrowFunction = 187,
-        DeleteExpression = 188,
-        TypeOfExpression = 189,
-        VoidExpression = 190,
-        AwaitExpression = 191,
-        PrefixUnaryExpression = 192,
-        PostfixUnaryExpression = 193,
-        BinaryExpression = 194,
-        ConditionalExpression = 195,
-        TemplateExpression = 196,
-        YieldExpression = 197,
-        SpreadElement = 198,
-        ClassExpression = 199,
-        OmittedExpression = 200,
-        ExpressionWithTypeArguments = 201,
-        AsExpression = 202,
-        NonNullExpression = 203,
-        MetaProperty = 204,
-        TemplateSpan = 205,
-        SemicolonClassElement = 206,
-        Block = 207,
-        VariableStatement = 208,
-        EmptyStatement = 209,
-        ExpressionStatement = 210,
-        IfStatement = 211,
-        DoStatement = 212,
-        WhileStatement = 213,
-        ForStatement = 214,
-        ForInStatement = 215,
-        ForOfStatement = 216,
-        ContinueStatement = 217,
-        BreakStatement = 218,
-        ReturnStatement = 219,
-        WithStatement = 220,
-        SwitchStatement = 221,
-        LabeledStatement = 222,
-        ThrowStatement = 223,
-        TryStatement = 224,
-        DebuggerStatement = 225,
-        VariableDeclaration = 226,
-        VariableDeclarationList = 227,
-        FunctionDeclaration = 228,
-        ClassDeclaration = 229,
-        InterfaceDeclaration = 230,
-        TypeAliasDeclaration = 231,
-        enumDeclaration = 232,
-        ModuleDeclaration = 233,
-        ModuleBlock = 234,
-        CaseBlock = 235,
-        NamespaceExportDeclaration = 236,
-        ImportEqualsDeclaration = 237,
-        ImportDeclaration = 238,
-        ImportClause = 239,
-        NamespaceImport = 240,
-        NamedImports = 241,
-        ImportSpecifier = 242,
-        ExportAssignment = 243,
-        ExportDeclaration = 244,
-        NamedExports = 245,
-        ExportSpecifier = 246,
-        MissingDeclaration = 247,
-        ExternalModuleReference = 248,
-        JsxElement = 249,
-        JsxSelfClosingElement = 250,
-        JsxOpeningElement = 251,
-        JsxClosingElement = 252,
-        JsxAttribute = 253,
-        JsxAttributes = 254,
-        JsxSpreadAttribute = 255,
-        JsxExpression = 256,
-        CaseClause = 257,
-        DefaultClause = 258,
-        HeritageClause = 259,
-        CatchClause = 260,
-        PropertyAssignment = 261,
-        ShorthandPropertyAssignment = 262,
-        SpreadAssignment = 263,
-        enumMember = 264,
-        SourceFile = 265,
-        Bundle = 266,
-        JSDocTypeExpression = 267,
-        JSDocAllType = 268,
-        JSDocUnknownType = 269,
-        JSDocArrayType = 270,
-        JSDocUnionType = 271,
-        JSDocTupleType = 272,
-        JSDocNullableType = 273,
-        JSDocNonNullableType = 274,
-        JSDocRecordType = 275,
-        JSDocRecordMember = 276,
-        JSDocTypeReference = 277,
-        JSDocOptionalType = 278,
-        JSDocFunctionType = 279,
-        JSDocVariadicType = 280,
-        JSDocConstructorType = 281,
-        JSDocThisType = 282,
-        JSDocComment = 283,
-        JSDocTag = 284,
-        JSDocAugmentsTag = 285,
-        JSDocClassTag = 286,
-        JSDocParameterTag = 287,
-        JSDocReturnTag = 288,
-        JSDocTypeTag = 289,
-        JSDocTemplateTag = 290,
-        JSDocTypedefTag = 291,
-        JSDocPropertyTag = 292,
-        JSDocTypeLiteral = 293,
-        JSDocLiteralType = 294,
-        SyntaxList = 295,
-        NotEmittedStatement = 296,
-        PartiallyEmittedExpression = 297,
-        CommaListExpression = 298,
-        MergeDeclarationMarker = 299,
-        EndOfDeclarationMarker = 300,
-    }
-    pub trait SystaxKindConst {
-        const Count: i32 = 301;
-        const FirstAssignment: i32 = 58;
-        const LastAssignment: i32 = 70;
-        const FirstCompoundAssignment: i32 = 59;
-        const LastCompoundAssignment: i32 = 70;
-        const FirstReservedWord: i32 = 72;
-        const LastReservedWord: i32 = 107;
-        const FirstKeyword: i32 = 72;
-        const LastKeyword: i32 = 142;
-        const FirstFutureReservedWord: i32 = 108;
-        const LastFutureReservedWord: i32 = 116;
-        const FirstTypeNode: i32 = 158;
-        const LastTypeNode: i32 = 173;
-        const FirstPunctuation: i32 = 17;
-        const LastPunctuation: i32 = 70;
-        const FirstToken: i32 = 0;
-        const LastToken: i32 = 142;
-        const FirstTriviaToken: i32 = 2;
-        const LastTriviaToken: i32 = 7;
-        const FirstLiteralToken: i32 = 8;
-        const LastLiteralToken: i32 = 13;
-        const FirstTemplateToken: i32 = 13;
-        const LastTemplateToken: i32 = 16;
-        const FirstBinaryOperator: i32 = 27;
-        const LastBinaryOperator: i32 = 70;
-        const FirstNode: i32 = 143;
-        const FirstJSDocNode: i32 = 267;
-        const LastJSDocNode: i32 = 294;
-        const FirstJSDocTagNode: i32 = 284;
-        const LastJSDocTagNode: i32 = 294;
-    }
-    pub enum NodeFlags {
-        None = 0,
-        Let = 1,
-        Const = 2,
-        NestedNamespace = 4,
-        Synthesized = 8,
-        Namespace = 16,
-        ExportContext = 32,
-        ContainsThis = 64,
-        HasImplicitReturn = 128,
-        HasExplicitReturn = 256,
-        GlobalAugmentation = 512,
-        HasAsyncFunctions = 1024,
-        DisallowInContext = 2048,
-        YieldContext = 4096,
-        DecoratorContext = 8192,
-        AwaitContext = 16384,
-        ThisNodeHasError = 32768,
-        JavaScriptFile = 65536,
-        ThisNodeOrAnySubNodesHasError = 131072,
-        HasAggregatedChildData = 262144,
-        BlockScoped = 3,
-        ReachabilityCheckFlags = 384,
-        ReachabilityAndEmitFlags = 1408,
-        ContextFlags = 96256,
-        TypeExcludesFlags = 20480,
-    }
-    pub enum ModifierFlags {
-        None = 0,
-        Export = 1,
-        Ambient = 2,
-        Public = 4,
-        Private = 8,
-        Protected = 16,
-        Static = 32,
-        Readonly = 64,
-        Abstract = 128,
-        Async = 256,
-        Default = 512,
-        Const = 2048,
-        HasComputedFlags = 536870912,
-        AccessibilityModifier = 28,
-        ParameterPropertyModifier = 92,
-        NonPublicAccessibilityModifier = 24,
-        TypeScriptModifier = 2270,
-        ExportDefault = 513,
-    }
-    pub enum JsxFlags {
-        None = 0,
-        /** An element from a named property of the JSX.IntrinsicElements interface */
-        IntrinsicNamedElement = 1,
-        /** An element inferred from the string index signature of the JSX.IntrinsicElements interface */
-        IntrinsicIndexedElement = 2,
-        IntrinsicElement = 3,
-    }
-
-    pub enum ModuleKind {
-        None = 0,
-        CommonJS = 1,
-        AMD = 2,
-        UMD = 3,
-        System = 4,
-        ES2015 = 5,
-        ESNext = 6,
-    }
-    pub enum JsxEmit {
-        None = 0,
-        Preserve = 1,
-        React = 2,
-        ReactNative = 3,
-    }
-    pub enum NewLineKind {
-        CarriageReturnLineFeed = 0,
-        LineFeed = 1,
-    }
-    pub enum ScriptKind {
-        Unknown = 0,
-        JS = 1,
-        JSX = 2,
-        TS = 3,
-        TSX = 4,
-        External = 5,
-    }
-    pub enum ScriptTarget {
-        ES3 = 0,
-        ES5 = 1,
-        ES2015 = 2,
-        ES2016 = 3,
-        ES2017 = 4,
-        ESNext = 5,
-    }
-    pub trait ScriptTargetConst {
-        const Latest: i32 = 5;
-    }
-    pub enum LanguageVariant {
-        Standard = 0,
-        JSX = 1,
-    }
-    pub enum WatchDirectoryFlags {
-        None = 0,
-        Recursive = 1,
-    }
-
-    pub enum Extension {
-        Ts = 0,
-        Tsx = 1,
-        Dts = 2,
-        Js = 3,
-        Jsx = 4,
-        // LastTypeScriptExtension = 2,
-    }
-
-    pub enum EmitFlags {
-        SingleLine = 1,
-        AdviseOnEmitNode = 2,
-        NoSubstitution = 4,
-        CapturesThis = 8,
-        NoLeadingSourceMap = 16,
-        NoTrailingSourceMap = 32,
-        NoSourceMap = 48,
-        NoNestedSourceMaps = 64,
-        NoTokenLeadingSourceMaps = 128,
-        NoTokenTrailingSourceMaps = 256,
-        NoTokenSourceMaps = 384,
-        NoLeadingComments = 512,
-        NoTrailingComments = 1024,
-        NoComments = 1536,
-        NoNestedComments = 2048,
-        HelperName = 4096,
-        ExportName = 8192,
-        LocalName = 16384,
-        InternalName = 32768,
-        Indented = 65536,
-        NoIndentation = 131072,
-        AsyncFunctionBody = 262144,
-        ReuseTempVariableScope = 524288,
-        CustomPrologue = 1048576,
-        NoHoisting = 2097152,
-        HasEndOfDeclarationMarker = 4194304,
-        Iterator = 8388608,
-        NoAsciiEscaping = 16777216,
-    }
-
-    pub enum EmitHint {
-        SourceFile = 0,
-        Expression = 1,
-        IdentifierName = 2,
-        Unspecified = 3,
-    }
+pub struct EmitHint(i32);
+impl EmitHint {
+    pub const SourceFile: i32 = 0;
+    pub const Expression: i32 = 1;
+    pub const IdentifierName: i32 = 2;
+    pub const Unspecified: i32 = 3;
 }
