@@ -24,16 +24,29 @@ impl Js {
 
 pub trait GetObject {
     fn object(&self) -> &chakracore::value::Object;
+    // fn object_mut(&mut self) -> &mut chakracore::value::Object;
 }
 
 pub struct ObjectBox {
     object: chakracore::value::Object,
 }
 
+impl ObjectBox {
+    pub fn new(guard: &chakracore::context::ContextGuard) -> ObjectBox {
+        ObjectBox { object: chakracore::value::Object::new(guard) }
+    }
+    // pub fn new_box(guard: &chakracore::context::ContextGuard) -> Box<ObjectBox> {
+    //     Box::new(ObjectBox::new(guard))
+    // }
+}
+
 impl GetObject for ObjectBox {
     fn object(&self) -> &chakracore::value::Object {
         &self.object
     }
+    // fn object_mut(&mut self) -> &mut chakracore::value::Object {
+    //     &mut self.object
+    // }
 }
 
 pub fn new_context() -> (chakracore::Runtime, chakracore::Context) {
@@ -62,7 +75,7 @@ pub trait TsMod : GetObject {
         self.object().get(guard, &chakracore::Property::new(guard, "version")).to_string(guard)
     }
 
-// createNode(kind: SyntaxKind, pos?: number, end?: number): Node;
+    // createNode(kind: SyntaxKind, pos?: number, end?: number): Node;
     fn createNode(&self, guard: &chakracore::context::ContextGuard, kind: SyntaxKind, pos: Option<i32>, end: Option<i32> ) -> Box<Node> {
         let SyntaxKind(kind_) = kind; 
         let tsmod = self.object();
@@ -76,14 +89,55 @@ pub trait TsMod : GetObject {
         Box::new(ObjectBox { object: node })
     }
 
-// function createParameter(decorators: ReadonlyArray<Decorator> | undefined, modifiers: ReadonlyArray<Modifier> | undefined, dotDotDotToken: DotDotDotToken | undefined, name: string | BindingName, questionToken?: QuestionToken, type?: TypeNode, initializer?: Expression): ParameterDeclaration;
+    // function createParameter(decorators: ReadonlyArray<Decorator> | undefined, modifiers: ReadonlyArray<Modifier> | undefined, dotDotDotToken: DotDotDotToken | undefined, name: string | BindingName, questionToken?: QuestionToken, type?: TypeNode, initializer?: Expression): ParameterDeclaration;
+    fn createParameter(&self, guard: &chakracore::context::ContextGuard, name: &Identifier) -> Box<ParameterDeclaration> {
+        let tsmod = self.object();
+        let function = tsmod.get(guard, &chakracore::Property::new(guard, "createParameter")).into_function().unwrap();
+        let rv = function.call_with_this(guard, tsmod, &[
+            &chakracore::value::undefined(guard),
+            &chakracore::value::undefined(guard),
+            &chakracore::value::undefined(guard),
+            name.object(),
+        ]);
+        Box::new(ObjectBox { object: rv.unwrap().into_object().unwrap() })
+    }
 
+    // function createIdentifier(text: string): Identifier;
+    fn createIdentifier(&self, guard: &chakracore::context::ContextGuard, text: &str) -> Box<Identifier> {
+        let tsmod = self.object();
+        let function = tsmod.get(guard, &chakracore::Property::new(guard, "createIdentifier")).into_function().unwrap();
+        let rv = function.call_with_this(guard, tsmod, &[
+            &chakracore::value::String::new(guard, text).into(),
+        ]);
+        Box::new(ObjectBox { object: rv.unwrap().into_object().unwrap() })
+    }
 
+    // function createLiteral(value: number): NumericLiteral;
+    fn createLiteral_number(&self, guard: &chakracore::context::ContextGuard, value: i32) -> Box<NumericLiteral> {
+        let tsmod = self.object();
+        let function = tsmod.get(guard, &chakracore::Property::new(guard, "createLiteral")).into_function().unwrap();
+        let rv = function.call_with_this(guard, tsmod, &[
+            &chakracore::value::Number::new(guard, value).into(),
+        ]);
+        Box::new(ObjectBox { object: rv.unwrap().into_object().unwrap() })
+    }
+
+    // function createBinary(left: Expression, operator: BinaryOperator | BinaryOperatorToken, right: Expression): BinaryExpression;
+    fn createBinary(&self, guard: &chakracore::context::ContextGuard, left: &Expression, operator: &BinaryOperatorToken, right: &Expression) -> Box<BinaryExpression> {
+        let tsmod = self.object();
+        let function = tsmod.get(guard, &chakracore::Property::new(guard, "createBinary")).into_function().unwrap();
+        let rv = function.call_with_this(guard, tsmod, &[
+            left.object(),
+            operator.object(),
+            right.object(),
+        ]);
+        Box::new(ObjectBox { object: rv.unwrap().into_object().unwrap() })
+    }
 }
 
 impl TsMod for ObjectBox {}
 
-pub trait Node : GetObject + TextRange {
+pub trait Node: GetObject + TextRange {
     fn kind(&self, guard: &chakracore::context::ContextGuard) -> i32 {
         let kind = self.object().get(&guard, &chakracore::Property::new(&guard, "kind"));
         kind.into_number().unwrap().value()
@@ -110,14 +164,115 @@ pub trait SourceFile: Declaration {
 
 impl SourceFile for ObjectBox {}
 
-pub trait Identifier {
+// interface Expression extends Node {
+//     _expressionBrand: any;
+// }
+pub trait Expression: Node {}
+impl Expression for ObjectBox {}
 
+// https://stackoverflow.com/a/28664881/23059
+pub trait AsExpression {
+    fn as_Expression(&self) -> &Expression;
+}
+impl<T: Expression> AsExpression for T {
+    fn as_Expression(&self) -> &Expression { self }
+}
+
+pub trait UnaryExpression: Expression {}
+impl UnaryExpression for ObjectBox {}
+
+pub trait UpdateExpression: UnaryExpression {}
+impl UpdateExpression for ObjectBox {}
+
+pub trait LeftHandSideExpression: UpdateExpression {}
+impl LeftHandSideExpression for ObjectBox {}
+
+pub trait MemberExpression: LeftHandSideExpression {}
+impl MemberExpression for ObjectBox {}
+
+pub trait PrimaryExpression: MemberExpression {}
+impl PrimaryExpression for ObjectBox {}
+
+
+    // interface Identifier extends PrimaryExpression {
+    //     kind: SyntaxKind.Identifier;
+
+pub trait Identifier: GetObject + PrimaryExpression + AsExpression { 
 }
 
 impl Identifier for ObjectBox {}
 
+    // interface PrinterOptions {
+    //     removeComments?: boolean;
+    //     newLine?: NewLineKind;
+    // }
+
+pub trait NumericLiteral: GetObject {
+
+}
+
+impl NumericLiteral for ObjectBox {}
+
+pub trait ParameterDeclaration {
+
+}
+
+impl ParameterDeclaration for ObjectBox {}
+
+pub trait PrinterOptions : GetObject  {
+    // fn set_newLine(&mut self, guard: &chakracore::context::ContextGuard, value: Option<NewLineKind>) {
+    //     let property = &chakracore::Property::new(guard, "newLine");
+    //     match value {
+    //         None => {
+    //             let jsv = &chakracore::value::undefined(guard);
+    //             self.object_mut().set(guard, property, jsv);
+    //         },
+    //         Some(v) => {
+    //             let jsv = &chakracore::value::Number::new(guard, i32::from(v));
+    //             self.object_mut().set(guard, property, jsv);
+    //         },
+    //     }
+    // }
+    fn set_newLine(&self, guard: &chakracore::context::ContextGuard, value: Option<NewLineKind>) {
+        let property = &chakracore::Property::new(guard, "newLine");
+        match value {
+            None => {
+                let jsv = &chakracore::value::undefined(guard);
+                self.object().set(guard, property, jsv);
+            },
+            Some(v) => {
+                let jsv = &chakracore::value::Number::new(guard, i32::from(v));
+                self.object().set(guard, property, jsv);
+            },
+        }
+    }
+}
+
+impl PrinterOptions for ObjectBox {}
 
 
+// TODO was limited to SyntaxKind, but that needs to be a trait
+pub trait Token<TKind> {}
+// impl Token for ObjectBox {}
+
+//  type BinaryOperator = AssignmentOperatorOrHigher | SyntaxKind.CommaToken;
+pub trait BinaryOperator: GetObject {}
+impl BinaryOperator for ObjectBox {}
+
+// pub trait BinaryOperatorToken: Token<BinaryOperator> {}
+// TODO BinaryOperator + 'static` does not have a constant size known at compile-time
+pub trait BinaryOperatorToken: GetObject {}
+impl BinaryOperatorToken for ObjectBox {}
+
+
+// interface BinaryExpression extends Expression, Declaration {
+//     kind: SyntaxKind.BinaryExpression;
+//     left: Expression;
+//     operatorToken: BinaryOperatorToken;
+//     right: Expression;
+// }
+pub trait BinaryExpression: Expression + Declaration {}
+impl BinaryExpression for ObjectBox {}
 
 pub struct SyntaxKind(i32);
 impl SyntaxKind {
@@ -529,11 +684,23 @@ impl JsxEmit {
     pub const React: i32 = 2;
     pub const ReactNative: i32 = 3;
 }
+
+#[derive(PartialEq,Eq)]
 pub struct NewLineKind(i32);
 impl NewLineKind {
-    pub const CarriageReturnLineFeed: i32 = 0;
-    pub const LineFeed: i32 = 1;
+    pub const CarriageReturnLineFeed: NewLineKind = NewLineKind(0);
+    pub const LineFeed: NewLineKind = NewLineKind(1);
 }
+impl From<NewLineKind> for i32 {
+    fn from(v: NewLineKind) -> Self {
+        match v {
+            NewLineKind::CarriageReturnLineFeed => 0,
+            NewLineKind::LineFeed => 1,
+            _ => -1,
+        }
+    }
+}
+
 pub struct ScriptKind(i32);
 impl ScriptKind {
     pub const Unknown: i32 = 0;
