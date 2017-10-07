@@ -16,10 +16,12 @@ fn makeFactorialFunction(guard: &ContextGuard, ts: &ts::TsMod){
         // /*dotDotDotToken*/ None,
         &*paramName);
 
+    // let operator: Box<ts::BinaryOperator> = Box::from(ts::new_SyntaxKind_LessThanEqualsToken());
     let condition = ts.createBinary(guard,
         &*paramName.as_Expression(),
-        &ts::SyntaxKind::LessThanEqualsToken,
-        &ts.createLiteral_number(guard, 1));
+        // &*operator,
+        &*Box::from(ts::new_SyntaxKind_LessThanEqualsToken()),
+        &*ts.createLiteral_number(guard, 1));
 
     let ifBody = ts.createBlock(
         [ts.createReturn(guard, ts.createLiteral_number(guard, 1))],
