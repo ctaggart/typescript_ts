@@ -29,12 +29,16 @@ pub trait GetObject {
 
 // // TODO should it be a reference instead?
 // pub struct ObjectBox<'a> {
-//     object: &'a chakracore::value::Object,
+//     object: &'a (chakracore::value::Object + 'a),
 // }
 
 pub struct ObjectBox {
     object: chakracore::value::Object,
 }
+
+// pub struct ObjectBox<'a> {
+//     object: Box<chakracore::value::Object + 'a>
+// }
 
 impl ObjectBox {
     pub fn new(guard: &chakracore::context::ContextGuard) -> Self {
@@ -170,6 +174,34 @@ pub trait TsMod : GetObject {
         ]);
         Box::new(ObjectBox { object: rv.unwrap().into_object().unwrap() })
     }
+
+    // TODO
+    // function createBlock(statements: ReadonlyArray<Statement>, multiLine?: boolean): Block;
+
+    // function createSourceFile(fileName: string, sourceText: string, languageVersion: ScriptTarget, setParentNodes?: boolean, scriptKind?: ScriptKind): SourceFile;
+    // ts.createSourceFile("someFileName.ts", "", ts::ScriptTarget::Latest, /*setParentNodes*/ false, ts::ScriptKind::TS);
+    fn createSourceFile(&self, guard: &chakracore::context::ContextGuard, fileName: &str, sourceText: &str, languageVersion: &ScriptTarget, setParentNodes: bool, scriptKind: &ScriptKind) -> Box<SourceFile> {
+        let tsmod = self.object();
+        let function = tsmod.get(guard, &chakracore::Property::new(guard, "createSourceFile")).into_function().unwrap();
+        let rv = function.call_with_this(guard, tsmod, &[
+            &chakracore::value::String::new(guard, fileName).into(),
+            &chakracore::value::String::new(guard, sourceText).into(),
+            &chakracore::value::Number::new(guard, languageVersion.id()).into(),
+            &chakracore::value::Boolean::new(guard, setParentNodes).into(),
+            &chakracore::value::Number::new(guard, scriptKind.id()).into(),
+        ]);
+        Box::new(ObjectBox { object: rv.unwrap().into_object().unwrap() })
+    }
+
+    // function createPrinter(printerOptions?: PrinterOptions, handlers?: PrintHandlers): Printer;
+    fn createPrinter(&self, guard: &chakracore::context::ContextGuard, printerOptions: &PrinterOptions) -> Box<Printer> {
+        let tsmod = self.object();
+        let function = tsmod.get(guard, &chakracore::Property::new(guard, "createPrinter")).into_function().unwrap();
+        let rv = function.call_with_this(guard, tsmod, &[
+            printerOptions.object()
+        ]);
+        Box::new(ObjectBox { object: rv.unwrap().into_object().unwrap() })
+    }
 }
 
 impl TsMod for ObjectBox {}
@@ -196,7 +228,10 @@ pub trait Declaration: Node {
 impl Declaration for ObjectBox {}
 
 pub trait SourceFile: Declaration {
-
+    fn fileName(&self, guard: &chakracore::context::ContextGuard) -> String {
+        let this = self.object();
+        this.get(guard, &chakracore::Property::new(guard, "fileName")).into_string().unwrap().value()
+    }
 }
 
 impl SourceFile for ObjectBox {}
@@ -244,19 +279,23 @@ impl Identifier for ObjectBox {}
     //     newLine?: NewLineKind;
     // }
 
+impl From<Box<Identifier>> for Box<Node> {
+    fn from(v: Box<Identifier>) -> Box<Node> {
+        Box::new(ObjectBox { object: chakracore::value::Object::clone(&*v.object())})
+    }
+}
+
 pub trait NumericLiteral: GetObject {
 
 }
 
 impl NumericLiteral for ObjectBox {}
 
-// TODO
-// impl From<Box<NumericLiteral>> for Box<Expression> {
-//     fn from(v: Box<NumericLiteral>) -> Box<Expression> {
-//         // Box::new(ObjectBox { object: *v.object()})
-//         Box::new(ObjectBox { object: v.obj() })
-//     }
-// }
+impl From<Box<NumericLiteral>> for Box<Expression> {
+    fn from(v: Box<NumericLiteral>) -> Box<Expression> {
+        Box::new(ObjectBox { object: chakracore::value::Object::clone(&*v.object())})
+    }
+}
 
 pub trait ParameterDeclaration {
 
@@ -296,6 +335,26 @@ pub trait PrinterOptions : GetObject  {
 impl PrinterOptions for ObjectBox {}
 
 
+pub trait Printer : GetObject  {
+
+    // printNode(hint: EmitHint, node: Node, sourceFile: SourceFile): string;
+    fn printNode(&self, guard: &chakracore::context::ContextGuard, hint: &EmitHint, node: &Node, sourceFile: &SourceFile) -> String {
+        let this = self.object();
+        let function = this.get(guard, &chakracore::Property::new(guard, "printNode")).into_function().unwrap();
+        println!("hint.id: {}", hint.id());
+        let rv = function.call_with_this(guard, this, &[
+            &chakracore::value::Number::new(guard, hint.id()).into(),
+            node.object(),
+            sourceFile.object(),
+        ]);
+        println!("after printNode");
+        println!("rv: {:?}", rv);
+        rv.unwrap().into_string().unwrap().value()
+    }
+}
+
+impl Printer for ObjectBox {}
+
 // TODO was limited to SyntaxKind, but that needs to be a trait
 // pub trait Token<TKind> {}
 // impl Token for ObjectBox {}
@@ -321,7 +380,6 @@ pub trait SyntaxKind_Unknown: GetId {
         SyntaxKindEnum::Unknown as i32
     }
 }
-// impl SyntaxKind_Unknown for GetId {}
 impl From<Box<SyntaxKind_Unknown>> for Box<SyntaxKind> {
     fn from(v: Box<SyntaxKind_Unknown>) -> Box<SyntaxKind> {
         Box::new(IdBox { id: SyntaxKind_Unknown::id(&*v) })
@@ -354,9 +412,6 @@ impl From<Box<SyntaxKind_LessThanEqualsToken>> for Box<BinaryOperator> {
         Box::new(IdBox { id: SyntaxKind_LessThanEqualsToken::id(&*v) })
     }
 }
-
-
-
 
 pub enum SyntaxKindEnum {
     Unknown = 0,
@@ -664,35 +719,35 @@ pub enum SyntaxKindEnum {
 
 pub trait SyntaxKindConst {
     const Count: i32 = 301;
-    // pub const FirstAssignment: i32 = 58;
-    // pub const LastAssignment: i32 = 70;
-    // pub const FirstCompoundAssignment: i32 = 59;
-    // pub const LastCompoundAssignment: i32 = 70;
-    // pub const FirstReservedWord: i32 = 72;
-    // pub const LastReservedWord: i32 = 107;
-    // pub const FirstKeyword: i32 = 72;
-    // pub const LastKeyword: i32 = 142;
-    // pub const FirstFutureReservedWord: i32 = 108;
-    // pub const LastFutureReservedWord: i32 = 116;
-    // pub const FirstTypeNode: i32 = 158;
-    // pub const LastTypeNode: i32 = 173;
-    // pub const FirstPunctuation: i32 = 17;
-    // pub const LastPunctuation: i32 = 70;
-    // pub const FirstToken: i32 = 0;
-    // pub const LastToken: i32 = 142;
-    // pub const FirstTriviaToken: i32 = 2;
-    // pub const LastTriviaToken: i32 = 7;
-    // pub const FirstLiteralToken: i32 = 8;
-    // pub const LastLiteralToken: i32 = 13;
-    // pub const FirstTemplateToken: i32 = 13;
-    // pub const LastTemplateToken: i32 = 16;
-    // pub const FirstBinaryOperator: i32 = 27;
-    // pub const LastBinaryOperator: i32 = 70;
-    // pub const FirstNode: i32 = 143;
-    // pub const FirstJSDocNode: i32 = 267;
-    // pub const LastJSDocNode: i32 = 294;
-    // pub const FirstJSDocTagNode: i32 = 284;
-    // pub const LastJSDocTagNode: i32 = 294;
+    const FirstAssignment: i32 = 58;
+    const LastAssignment: i32 = 70;
+    const FirstCompoundAssignment: i32 = 59;
+    const LastCompoundAssignment: i32 = 70;
+    const FirstReservedWord: i32 = 72;
+    const LastReservedWord: i32 = 107;
+    const FirstKeyword: i32 = 72;
+    const LastKeyword: i32 = 142;
+    const FirstFutureReservedWord: i32 = 108;
+    const LastFutureReservedWord: i32 = 116;
+    const FirstTypeNode: i32 = 158;
+    const LastTypeNode: i32 = 173;
+    const FirstPunctuation: i32 = 17;
+    const LastPunctuation: i32 = 70;
+    const FirstToken: i32 = 0;
+    const LastToken: i32 = 142;
+    const FirstTriviaToken: i32 = 2;
+    const LastTriviaToken: i32 = 7;
+    const FirstLiteralToken: i32 = 8;
+    const LastLiteralToken: i32 = 13;
+    const FirstTemplateToken: i32 = 13;
+    const LastTemplateToken: i32 = 16;
+    const FirstBinaryOperator: i32 = 27;
+    const LastBinaryOperator: i32 = 70;
+    const FirstNode: i32 = 143;
+    const FirstJSDocNode: i32 = 267;
+    const LastJSDocNode: i32 = 294;
+    const FirstJSDocTagNode: i32 = 284;
+    const LastJSDocTagNode: i32 = 294;
 }
 
 
@@ -789,25 +844,68 @@ impl From<NewLineKind> for i32 {
     }
 }
 
-pub struct ScriptKind(i32);
-impl ScriptKind {
-    pub const Unknown: i32 = 0;
-    pub const JS: i32 = 1;
-    pub const JSX: i32 = 2;
-    pub const TS: i32 = 3;
-    pub const TSX: i32 = 4;
-    pub const External: i32 = 5;
+pub trait ScriptKind: GetId {}
+impl ScriptKind for IdBox {}
+
+enum ScriptKindEnum {
+    Unknown = 0,
+    JS = 1,
+    JSX = 2,
+    TS = 3,
+    TSX = 4,
+    External = 5,
 }
-pub struct ScriptTarget(i32);
-impl ScriptTarget {
-    pub const ES3: i32 = 0;
-    pub const ES5: i32 = 1;
-    pub const ES2015: i32 = 2;
-    pub const ES2016: i32 = 3;
-    pub const ES2017: i32 = 4;
-    pub const ESNext: i32 = 5;
-    pub const Latest: i32 = 5;
+
+pub trait ScriptKind_TS{
 }
+impl GetId for ScriptKind_TS {
+    fn id(&self) -> i32 { 
+        ScriptKindEnum::TS as i32
+    }
+}
+impl ScriptKind_TS for Enum {}
+pub fn new_ScriptKind_TS() -> Box<ScriptKind_TS> {
+    Box::new(Enum {})
+}
+impl From<Box<ScriptKind_TS>> for Box<ScriptKind> {
+    fn from(v: Box<ScriptKind_TS>) -> Box<ScriptKind> {
+        Box::new(IdBox { id: ScriptKind_TS::id(&*v) })
+    }
+}
+
+pub trait ScriptTarget: GetId {}
+impl ScriptTarget for IdBox {}
+
+pub enum ScriptTargetEnum {
+    ES3 = 0,
+    ES5 = 1,
+    ES2015 = 2,
+    ES2016 = 3,
+    ES2017 = 4,
+    ESNext = 5,
+}
+pub trait ScriptTargetConst {
+    const Latest: i32 = 5;
+}
+
+pub trait ScriptTarget_Latest {
+}
+impl GetId for ScriptTarget_Latest {
+    fn id(&self) -> i32 { 
+        // ScriptTargetConst::Latest
+        5
+    }
+}
+impl ScriptTarget_Latest for Enum {}
+pub fn new_ScriptTarget_Latest() -> Box<ScriptTarget_Latest> {
+    Box::new(Enum {})
+}
+impl From<Box<ScriptTarget_Latest>> for Box<ScriptTarget> {
+    fn from(v: Box<ScriptTarget_Latest>) -> Box<ScriptTarget> {
+        Box::new(IdBox { id: ScriptTarget_Latest::id(&*v) })
+    }
+}
+
 pub struct LanguageVariant(i32);
 impl LanguageVariant {
     pub const Standard: i32 = 0;
@@ -861,12 +959,32 @@ impl EmitFlags {
     pub const NoAsciiEscaping: i32 = 16777216;
 }
 
-pub struct EmitHint(i32);
-impl EmitHint {
-    pub const SourceFile: i32 = 0;
-    pub const Expression: i32 = 1;
-    pub const IdentifierName: i32 = 2;
-    pub const Unspecified: i32 = 3;
+pub trait EmitHint: GetId {}
+impl EmitHint for IdBox {}
+
+pub enum EmitHintEnum {
+    SourceFile = 0,
+    Expression = 1,
+    IdentifierName = 2,
+    MappedTypeParameter = 3,
+    Unspecified = 4,
+}
+
+pub trait EmitHint_Unspecified {
+}
+impl GetId for EmitHint_Unspecified {
+    fn id(&self) -> i32 { 
+        EmitHintEnum::Unspecified as i32
+    }
+}
+impl EmitHint_Unspecified for Enum {}
+pub fn new_EmitHint_Unspecified() -> Box<EmitHint_Unspecified> {
+    Box::new(Enum {})
+}
+impl From<Box<EmitHint_Unspecified>> for Box<EmitHint> {
+    fn from(v: Box<EmitHint_Unspecified>) -> Box<EmitHint> {
+        Box::new(IdBox { id: EmitHint_Unspecified::id(&*v) })
+    }
 }
 
 
@@ -884,7 +1002,7 @@ impl EmitHint {
 //     QualifiedName(&'a str),
 // }
 
-enum BinaryOperatorUnion<'a> {
-    a (&'a SyntaxKind_Unknown),
-    // b (SyntaxKindEnum::AsExpression),
-}
+// enum BinaryOperatorUnion<'a> {
+//     a (&'a SyntaxKind_Unknown),
+//     // b (SyntaxKindEnum::AsExpression),
+// }
