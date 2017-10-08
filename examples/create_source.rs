@@ -18,31 +18,30 @@ fn makeFactorialFunction(guard: &ContextGuard, ts: &ts::TsMod) -> Box<ts::Node> 
         // /*dotDotDotToken*/ None,
         &*paramName);
 
-    // // let operator: Box<ts::BinaryOperator> = Box::from(ts::new_SyntaxKind_LessThanEqualsToken());
-    // let condition = ts.createBinary(guard,
-    //     &*paramName.as_Expression(),
-    //     // &*operator,
-    //     &*Box::from(ts::new_SyntaxKind_LessThanEqualsToken()),
-    //     &*Box::from(ts.createLiteral_number(guard, 1)));
+    let condition = ts.createBinary(guard,
+        &*paramName.as_Expression(),
+        // &*operator,
+        &*Box::from(ts::SyntaxKind_LessThanEqualsToken_new()),
+        &*Box::from(ts.createLiteral_number(guard, 1)));
 
-    // let ifBody = ts.createBlock(
-    //     [ts.createReturn(guard, ts.createLiteral_number(guard, 1))],
-    //     /*multiline*/ true);
-    // let decrementedArg = ts.createBinary(guard, &*paramName.as_Expression(), &ts::SyntaxKind::MinusToken, &ts.createLiteral(guard, 1));
+    let ifBody = ts.createBlock(guard,
+        &[&*Box::from(ts.createReturn(guard, &*Box::from(ts.createLiteral_number(guard, 1))))],
+        /*multiline*/ true);
+    let decrementedArg = ts.createBinary(guard, &*paramName.as_Expression(), &*Box::from(ts::SyntaxKind_MinusToken_new()), &*Box::from(ts.createLiteral_number(guard, 1)));
     // let recurse = ts.createBinary(guard,
-    //     paramName,
+    //     &*Box::from(paramName),
     //     ts::SyntaxKind::AsteriskToken,
     //     ts.createCall(guard, functionName, /*typeArgs*/ None, [decrementedArg]));
-    // let statements = [
-    //     ts.createIf(guard, condition, ifBody),
-    //     ts.createReturn(guard,
+    // let statements = &[
+    //     &*Box::from(ts.createIf(guard, condition, ifBody)),
+    //     &*Box::from(ts.createReturn(guard,
     //         recurse
-    //     )
+    //     )),
     // ];
 
     // ts.createFunctionDeclaration(guard,
     //     /*decorators*/ None,
-    //     /*modifiers*/[ts.createToken(ts::SyntaxKind::ExportKeyword)],
+    //     /*modifiers*/&[&*Box::from(ts.createToken(ts::SyntaxKind::ExportKeyword))],
     //     /*asteriskToken*/ None,
     //     functionName,
     //     /*typeParameters*/ None,
@@ -51,7 +50,7 @@ fn makeFactorialFunction(guard: &ContextGuard, ts: &ts::TsMod) -> Box<ts::Node> 
     //     ts.createBlock(guard, statements, /*multiline*/ true),
     // );
 
-    Box::from(functionName)
+    Box::from(decrementedArg)
 }
 
 fn main() {
@@ -61,20 +60,14 @@ fn main() {
     ts::eval_js(&guard, &js);
     let ts = ts::ts(&guard);
 
-    let resultFile = ts.createSourceFile(&guard, "someFileName.ts", "", &*Box::from(ts::new_ScriptTarget_Latest()), /*setParentNodes*/ false, &*Box::from(ts::new_ScriptKind_TS()));
-    println!("fileName: {}", resultFile.fileName(&guard));
+    let resultFile = ts.createSourceFile(&guard, "someFileName.ts", "", &*Box::from(ts::ScriptTarget_Latest_new()), /*setParentNodes*/ false, &*Box::from(ts::ScriptKind_TS_new()));
 
     let printerOptions: Box<ts::PrinterOptions> = Box::new(ts::ObjectBox::new(&guard));
     printerOptions.set_newLine(&guard, Some(ts::NewLineKind::LineFeed));
-
-    // let printer = ts.createPrinter({
-    //     newLine: ts::NewLineKind::LineFeed
-    // });
     let printer = ts.createPrinter(&guard, &*printerOptions);
     
     let node = &*makeFactorialFunction(&guard, &*ts);
-    println!("kind: {:?}", node.kind(&guard));
-    let result = printer.printNode(&guard, &*Box::from(ts::new_EmitHint_Unspecified()), node, &*resultFile);
+    let result = printer.printNode(&guard, &*Box::from(ts::EmitHint_Unspecified_new()), node, &*resultFile);
 
     println!("result: {}", result);
 }

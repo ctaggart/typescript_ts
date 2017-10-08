@@ -24,21 +24,11 @@ impl Js {
 
 pub trait GetObject {
     fn object(&self) -> &chakracore::value::Object;
-    // fn obj(self) -> chakracore::value::Object;
 }
-
-// // TODO should it be a reference instead?
-// pub struct ObjectBox<'a> {
-//     object: &'a (chakracore::value::Object + 'a),
-// }
 
 pub struct ObjectBox {
     object: chakracore::value::Object,
 }
-
-// pub struct ObjectBox<'a> {
-//     object: Box<chakracore::value::Object + 'a>
-// }
 
 impl ObjectBox {
     pub fn new(guard: &chakracore::context::ContextGuard) -> Self {
@@ -50,9 +40,6 @@ impl GetObject for ObjectBox {
     fn object(&self) -> &chakracore::value::Object {
         &self.object
     }
-    // fn obj(self) -> chakracore::value::Object {
-    //     self.object
-    // }
 }
 
 pub trait GetNumber {
@@ -119,9 +106,9 @@ pub trait TsMod : GetObject {
 
     // createNode(kind: SyntaxKind, pos?: number, end?: number): Node;
     fn createNode(&self, guard: &chakracore::context::ContextGuard, kind: &SyntaxKind, pos: Option<i32>, end: Option<i32> ) -> Box<Node> {
-        let tsmod = self.object();
-        let function = tsmod.get(guard, &chakracore::Property::new(guard, "createNode")).into_function().unwrap();
-        let rv = function.call_with_this(guard, tsmod, &[
+        let this = self.object();
+        let function = this.get(guard, &chakracore::Property::new(guard, "createNode")).into_function().unwrap();
+        let rv = function.call_with_this(guard, this, &[
             &chakracore::value::Number::new(guard, kind.id()).into(),
             &chakracore::value::Number::new(guard, pos.unwrap_or(-1)).into(),
             &chakracore::value::Number::new(guard, end.unwrap_or(-1)).into(),
@@ -132,9 +119,9 @@ pub trait TsMod : GetObject {
 
     // function createParameter(decorators: ReadonlyArray<Decorator> | undefined, modifiers: ReadonlyArray<Modifier> | undefined, dotDotDotToken: DotDotDotToken | undefined, name: string | BindingName, questionToken?: QuestionToken, type?: TypeNode, initializer?: Expression): ParameterDeclaration;
     fn createParameter(&self, guard: &chakracore::context::ContextGuard, name: &Identifier) -> Box<ParameterDeclaration> {
-        let tsmod = self.object();
-        let function = tsmod.get(guard, &chakracore::Property::new(guard, "createParameter")).into_function().unwrap();
-        let rv = function.call_with_this(guard, tsmod, &[
+        let this = self.object();
+        let function = this.get(guard, &chakracore::Property::new(guard, "createParameter")).into_function().unwrap();
+        let rv = function.call_with_this(guard, this, &[
             &chakracore::value::undefined(guard),
             &chakracore::value::undefined(guard),
             &chakracore::value::undefined(guard),
@@ -145,9 +132,9 @@ pub trait TsMod : GetObject {
 
     // function createIdentifier(text: string): Identifier;
     fn createIdentifier(&self, guard: &chakracore::context::ContextGuard, text: &str) -> Box<Identifier> {
-        let tsmod = self.object();
-        let function = tsmod.get(guard, &chakracore::Property::new(guard, "createIdentifier")).into_function().unwrap();
-        let rv = function.call_with_this(guard, tsmod, &[
+        let this = self.object();
+        let function = this.get(guard, &chakracore::Property::new(guard, "createIdentifier")).into_function().unwrap();
+        let rv = function.call_with_this(guard, this, &[
             &chakracore::value::String::new(guard, text).into(),
         ]);
         Box::new(ObjectBox { object: rv.unwrap().into_object().unwrap() })
@@ -155,9 +142,9 @@ pub trait TsMod : GetObject {
 
     // function createLiteral(value: number): NumericLiteral;
     fn createLiteral_number(&self, guard: &chakracore::context::ContextGuard, value: i32) -> Box<NumericLiteral> {
-        let tsmod = self.object();
-        let function = tsmod.get(guard, &chakracore::Property::new(guard, "createLiteral")).into_function().unwrap();
-        let rv = function.call_with_this(guard, tsmod, &[
+        let this = self.object();
+        let function = this.get(guard, &chakracore::Property::new(guard, "createLiteral")).into_function().unwrap();
+        let rv = function.call_with_this(guard, this, &[
             &chakracore::value::Number::new(guard, value).into(),
         ]);
         Box::new(ObjectBox { object: rv.unwrap().into_object().unwrap() })
@@ -165,9 +152,9 @@ pub trait TsMod : GetObject {
 
     // function createBinary(left: Expression, operator: BinaryOperator | BinaryOperatorToken, right: Expression): BinaryExpression;
     fn createBinary(&self, guard: &chakracore::context::ContextGuard, left: &Expression, operator: &BinaryOperator, right: &Expression) -> Box<BinaryExpression> {
-        let tsmod = self.object();
-        let function = tsmod.get(guard, &chakracore::Property::new(guard, "createBinary")).into_function().unwrap();
-        let rv = function.call_with_this(guard, tsmod, &[
+        let this = self.object();
+        let function = this.get(guard, &chakracore::Property::new(guard, "createBinary")).into_function().unwrap();
+        let rv = function.call_with_this(guard, this, &[
             left.object(),
             &chakracore::value::Number::new(guard, operator.id()).into(),
             right.object(),
@@ -175,15 +162,30 @@ pub trait TsMod : GetObject {
         Box::new(ObjectBox { object: rv.unwrap().into_object().unwrap() })
     }
 
-    // TODO
     // function createBlock(statements: ReadonlyArray<Statement>, multiLine?: boolean): Block;
+    fn createBlock(&self, guard: &chakracore::context::ContextGuard, statements: &[&Statement], multiLine: bool ) -> Box<Block> {
+        let this = self.object();
+        let function = this.get(guard, &chakracore::Property::new(guard, "createBlock")).into_function().unwrap();
+
+        let statements_length = statements.len() as u32;
+        let statements_array = chakracore::value::Array::new(guard, statements_length);
+        for i in 0..statements_length {
+            statements_array.set_index(guard, i, statements[i as usize].object());
+        }
+
+        let rv = function.call_with_this(guard, this, &[
+            &statements_array,
+            &chakracore::value::Boolean::new(guard, multiLine).into(),
+        ]);
+        Box::new(ObjectBox { object: rv.unwrap().into_object().unwrap() })
+    }
 
     // function createSourceFile(fileName: string, sourceText: string, languageVersion: ScriptTarget, setParentNodes?: boolean, scriptKind?: ScriptKind): SourceFile;
     // ts.createSourceFile("someFileName.ts", "", ts::ScriptTarget::Latest, /*setParentNodes*/ false, ts::ScriptKind::TS);
     fn createSourceFile(&self, guard: &chakracore::context::ContextGuard, fileName: &str, sourceText: &str, languageVersion: &ScriptTarget, setParentNodes: bool, scriptKind: &ScriptKind) -> Box<SourceFile> {
-        let tsmod = self.object();
-        let function = tsmod.get(guard, &chakracore::Property::new(guard, "createSourceFile")).into_function().unwrap();
-        let rv = function.call_with_this(guard, tsmod, &[
+        let this = self.object();
+        let function = this.get(guard, &chakracore::Property::new(guard, "createSourceFile")).into_function().unwrap();
+        let rv = function.call_with_this(guard, this, &[
             &chakracore::value::String::new(guard, fileName).into(),
             &chakracore::value::String::new(guard, sourceText).into(),
             &chakracore::value::Number::new(guard, languageVersion.id()).into(),
@@ -195,15 +197,24 @@ pub trait TsMod : GetObject {
 
     // function createPrinter(printerOptions?: PrinterOptions, handlers?: PrintHandlers): Printer;
     fn createPrinter(&self, guard: &chakracore::context::ContextGuard, printerOptions: &PrinterOptions) -> Box<Printer> {
-        let tsmod = self.object();
-        let function = tsmod.get(guard, &chakracore::Property::new(guard, "createPrinter")).into_function().unwrap();
-        let rv = function.call_with_this(guard, tsmod, &[
+        let this = self.object();
+        let function = this.get(guard, &chakracore::Property::new(guard, "createPrinter")).into_function().unwrap();
+        let rv = function.call_with_this(guard, this, &[
             printerOptions.object()
         ]);
         Box::new(ObjectBox { object: rv.unwrap().into_object().unwrap() })
     }
-}
 
+    // function createReturn(expression?: Expression): ReturnStatement;
+    fn createReturn(&self, guard: &chakracore::context::ContextGuard, expression: &Expression) -> Box<ReturnStatement> {
+        let this = self.object();
+        let function = this.get(guard, &chakracore::Property::new(guard, "createReturn")).into_function().unwrap();
+        let rv = function.call_with_this(guard, this, &[
+            expression.object(),
+        ]);
+        Box::new(ObjectBox { object: rv.unwrap().into_object().unwrap() })
+    }
+}
 impl TsMod for ObjectBox {}
 
 pub trait Node: GetObject + TextRange {
@@ -212,18 +223,12 @@ pub trait Node: GetObject + TextRange {
         kind.into_number().unwrap().value()
     }
 }
-
 impl Node for ObjectBox {}
 
-pub trait TextRange {
-
-}
-
+pub trait TextRange {}
 impl TextRange for ObjectBox {}
 
-pub trait Declaration: Node {
-
-}
+pub trait Declaration: Node {}
 
 impl Declaration for ObjectBox {}
 
@@ -233,7 +238,6 @@ pub trait SourceFile: Declaration {
         this.get(guard, &chakracore::Property::new(guard, "fileName")).into_string().unwrap().value()
     }
 }
-
 impl SourceFile for ObjectBox {}
 
 // interface Expression extends Node {
@@ -265,30 +269,10 @@ impl MemberExpression for ObjectBox {}
 pub trait PrimaryExpression: MemberExpression {}
 impl PrimaryExpression for ObjectBox {}
 
-
-    // interface Identifier extends PrimaryExpression {
-    //     kind: SyntaxKind.Identifier;
-
-pub trait Identifier: GetObject + PrimaryExpression + AsExpression { 
-}
-
+pub trait Identifier: GetObject + PrimaryExpression + AsExpression {}
 impl Identifier for ObjectBox {}
 
-    // interface PrinterOptions {
-    //     removeComments?: boolean;
-    //     newLine?: NewLineKind;
-    // }
-
-impl From<Box<Identifier>> for Box<Node> {
-    fn from(v: Box<Identifier>) -> Box<Node> {
-        Box::new(ObjectBox { object: chakracore::value::Object::clone(&*v.object())})
-    }
-}
-
-pub trait NumericLiteral: GetObject {
-
-}
-
+pub trait NumericLiteral: GetObject {}
 impl NumericLiteral for ObjectBox {}
 
 impl From<Box<NumericLiteral>> for Box<Expression> {
@@ -297,26 +281,10 @@ impl From<Box<NumericLiteral>> for Box<Expression> {
     }
 }
 
-pub trait ParameterDeclaration {
-
-}
-
+pub trait ParameterDeclaration {}
 impl ParameterDeclaration for ObjectBox {}
 
 pub trait PrinterOptions : GetObject  {
-    // fn set_newLine(&mut self, guard: &chakracore::context::ContextGuard, value: Option<NewLineKind>) {
-    //     let property = &chakracore::Property::new(guard, "newLine");
-    //     match value {
-    //         None => {
-    //             let jsv = &chakracore::value::undefined(guard);
-    //             self.object_mut().set(guard, property, jsv);
-    //         },
-    //         Some(v) => {
-    //             let jsv = &chakracore::value::Number::new(guard, i32::from(v));
-    //             self.object_mut().set(guard, property, jsv);
-    //         },
-    //     }
-    // }
     fn set_newLine(&self, guard: &chakracore::context::ContextGuard, value: Option<NewLineKind>) {
         let property = &chakracore::Property::new(guard, "newLine");
         match value {
@@ -331,9 +299,7 @@ pub trait PrinterOptions : GetObject  {
         }
     }
 }
-
 impl PrinterOptions for ObjectBox {}
-
 
 pub trait Printer : GetObject  {
 
@@ -341,36 +307,18 @@ pub trait Printer : GetObject  {
     fn printNode(&self, guard: &chakracore::context::ContextGuard, hint: &EmitHint, node: &Node, sourceFile: &SourceFile) -> String {
         let this = self.object();
         let function = this.get(guard, &chakracore::Property::new(guard, "printNode")).into_function().unwrap();
-        println!("hint.id: {}", hint.id());
         let rv = function.call_with_this(guard, this, &[
             &chakracore::value::Number::new(guard, hint.id()).into(),
             node.object(),
             sourceFile.object(),
         ]);
-        println!("after printNode");
-        println!("rv: {:?}", rv);
         rv.unwrap().into_string().unwrap().value()
     }
 }
-
 impl Printer for ObjectBox {}
 
-// TODO was limited to SyntaxKind, but that needs to be a trait
-// pub trait Token<TKind> {}
-// impl Token for ObjectBox {}
-
-// interface BinaryExpression extends Expression, Declaration {
-//     kind: SyntaxKind.BinaryExpression;
-//     left: Expression;
-//     operatorToken: BinaryOperatorToken;
-//     right: Expression;
-// }
 pub trait BinaryExpression: Expression + Declaration {}
 impl BinaryExpression for ObjectBox {}
-
-// pub trait SyntaxKind: GetNumber {
-// }
-// impl SyntaxKind for NumberBox {}
 
 pub trait SyntaxKind: GetId {}
 impl SyntaxKind for IdBox {}
@@ -386,20 +334,39 @@ impl From<Box<SyntaxKind_Unknown>> for Box<SyntaxKind> {
     }
 }
 
-//  type BinaryOperator = AssignmentOperatorOrHigher | SyntaxKind.CommaToken;
 pub trait BinaryOperator: GetId {}
 impl BinaryOperator for IdBox {}
 
-pub trait SyntaxKind_LessThanEqualsToken {
-}
+pub trait SyntaxKind_LessThanEqualsToken {}
 impl GetId for SyntaxKind_LessThanEqualsToken {
     fn id(&self) -> i32 { 
         SyntaxKindEnum::LessThanEqualsToken as i32
     }
 }
 impl SyntaxKind_LessThanEqualsToken for Enum {}
-pub fn new_SyntaxKind_LessThanEqualsToken() -> Box<SyntaxKind_LessThanEqualsToken> {
+pub fn SyntaxKind_LessThanEqualsToken_new() -> Box<SyntaxKind_LessThanEqualsToken> {
     Box::new(Enum {})
+}
+
+pub trait SyntaxKind_MinusToken {}
+impl GetId for SyntaxKind_MinusToken {
+    fn id(&self) -> i32 { 
+        SyntaxKindEnum::MinusToken as i32
+    }
+}
+impl SyntaxKind_MinusToken for Enum {}
+pub fn SyntaxKind_MinusToken_new() -> Box<SyntaxKind_MinusToken> {
+    Box::new(Enum {})
+}
+impl From<Box<SyntaxKind_MinusToken>> for Box<SyntaxKind> {
+    fn from(v: Box<SyntaxKind_MinusToken>) -> Box<SyntaxKind> {
+        Box::new(IdBox { id: SyntaxKind_MinusToken::id(&*v) })
+    }
+}
+impl From<Box<SyntaxKind_MinusToken>> for Box<BinaryOperator> {
+    fn from(v: Box<SyntaxKind_MinusToken>) -> Box<BinaryOperator> {
+        Box::new(IdBox { id: SyntaxKind_MinusToken::id(&*v) })
+    }
 }
 
 impl From<Box<SyntaxKind_LessThanEqualsToken>> for Box<SyntaxKind> {
@@ -864,7 +831,7 @@ impl GetId for ScriptKind_TS {
     }
 }
 impl ScriptKind_TS for Enum {}
-pub fn new_ScriptKind_TS() -> Box<ScriptKind_TS> {
+pub fn ScriptKind_TS_new() -> Box<ScriptKind_TS> {
     Box::new(Enum {})
 }
 impl From<Box<ScriptKind_TS>> for Box<ScriptKind> {
@@ -897,7 +864,7 @@ impl GetId for ScriptTarget_Latest {
     }
 }
 impl ScriptTarget_Latest for Enum {}
-pub fn new_ScriptTarget_Latest() -> Box<ScriptTarget_Latest> {
+pub fn ScriptTarget_Latest_new() -> Box<ScriptTarget_Latest> {
     Box::new(Enum {})
 }
 impl From<Box<ScriptTarget_Latest>> for Box<ScriptTarget> {
@@ -970,15 +937,14 @@ pub enum EmitHintEnum {
     Unspecified = 4,
 }
 
-pub trait EmitHint_Unspecified {
-}
+pub trait EmitHint_Unspecified {}
 impl GetId for EmitHint_Unspecified {
     fn id(&self) -> i32 { 
         EmitHintEnum::Unspecified as i32
     }
 }
 impl EmitHint_Unspecified for Enum {}
-pub fn new_EmitHint_Unspecified() -> Box<EmitHint_Unspecified> {
+pub fn EmitHint_Unspecified_new() -> Box<EmitHint_Unspecified> {
     Box::new(Enum {})
 }
 impl From<Box<EmitHint_Unspecified>> for Box<EmitHint> {
@@ -987,22 +953,41 @@ impl From<Box<EmitHint_Unspecified>> for Box<EmitHint> {
     }
 }
 
+pub trait Statement: GetObject {}
+impl Statement for ObjectBox {}
 
-    // type BitwiseOperator = SyntaxKind.AmpersandToken | SyntaxKind.BarToken | SyntaxKind.CaretToken;
-    // type BitwiseOperatorOrHigher = EqualityOperatorOrHigher | BitwiseOperator;
-    // type LogicalOperator = SyntaxKind.AmpersandAmpersandToken | SyntaxKind.BarBarToken;
-    // type LogicalOperatorOrHigher = BitwiseOperatorOrHigher | LogicalOperator;
-    // type CompoundAssignmentOperator = SyntaxKind.PlusEqualsToken | SyntaxKind.MinusEqualsToken | SyntaxKind.AsteriskAsteriskEqualsToken | SyntaxKind.AsteriskEqualsToken | SyntaxKind.SlashEqualsToken | SyntaxKind.PercentEqualsToken | SyntaxKind.AmpersandEqualsToken | SyntaxKind.BarEqualsToken | SyntaxKind.CaretEqualsToken | SyntaxKind.LessThanLessThanEqualsToken | SyntaxKind.GreaterThanGreaterThanGreaterThanEqualsToken | SyntaxKind.GreaterThanGreaterThanEqualsToken;
-    // type AssignmentOperator = SyntaxKind.EqualsToken | CompoundAssignmentOperator;
-    // type AssignmentOperatorOrHigher = LogicalOperatorOrHigher | AssignmentOperator;
-    // type BinaryOperator = AssignmentOperatorOrHigher | SyntaxKind.CommaToken;
+pub trait Block: GetObject {}
+impl Block for ObjectBox {}
 
-// enum EntityName<'a> {
-//     Identifie(&'a ts::Identifier),
-//     QualifiedName(&'a str),
-// }
+pub trait ReturnStatement: GetObject {}
+impl ReturnStatement for ObjectBox {}
 
-// enum BinaryOperatorUnion<'a> {
-//     a (&'a SyntaxKind_Unknown),
-//     // b (SyntaxKindEnum::AsExpression),
-// }
+impl From<Box<Identifier>> for Box<Node> {
+    fn from(v: Box<Identifier>) -> Box<Node> {
+        Box::new(ObjectBox { object: chakracore::value::Object::clone(&*v.object())})
+    }
+}
+
+impl From<Box<Identifier>> for Box<Expression> {
+    fn from(v: Box<Identifier>) -> Box<Expression> {
+        Box::new(ObjectBox { object: chakracore::value::Object::clone(&*v.object())})
+    }
+}
+
+impl From<Box<BinaryExpression>> for Box<Node> {
+    fn from(v: Box<BinaryExpression>) -> Box<Node> {
+        Box::new(ObjectBox { object: chakracore::value::Object::clone(&*v.object())})
+    }
+}
+
+impl From<Box<Block>> for Box<Node> {
+    fn from(v: Box<Block>) -> Box<Node> {
+        Box::new(ObjectBox { object: chakracore::value::Object::clone(&*v.object())})
+    }
+}
+
+impl From<Box<ReturnStatement>> for Box<Statement> {
+    fn from(v: Box<ReturnStatement>) -> Box<Statement> {
+        Box::new(ObjectBox { object: chakracore::value::Object::clone(&*v.object())})
+    }
+}
