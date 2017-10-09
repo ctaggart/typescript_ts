@@ -11,6 +11,7 @@ use chakracore::context::ContextGuard;
 fn makeFactorialFunction(guard: &ContextGuard, ts: &ts::TsMod) -> Box<ts::Node> {
 
     let functionName = ts.createIdentifier(guard, "factorial");
+    let functionName2 = ts.createIdentifier(guard, "factorial"); // TODO problem with Box::from
     let paramName = ts.createIdentifier(guard, "n");
     let parameter = ts.createParameter(guard,
         // /*decorators*/ None,
@@ -28,29 +29,29 @@ fn makeFactorialFunction(guard: &ContextGuard, ts: &ts::TsMod) -> Box<ts::Node> 
         &[&*Box::from(ts.createReturn(guard, &*Box::from(ts.createLiteral_number(guard, 1))))],
         /*multiline*/ true);
     let decrementedArg = ts.createBinary(guard, &*paramName.as_Expression(), &*Box::from(ts::SyntaxKind_MinusToken_new()), &*Box::from(ts.createLiteral_number(guard, 1)));
-    // let recurse = ts.createBinary(guard,
-    //     &*Box::from(paramName),
-    //     ts::SyntaxKind::AsteriskToken,
-    //     ts.createCall(guard, functionName, /*typeArgs*/ None, [decrementedArg]));
-    // let statements = &[
-    //     &*Box::from(ts.createIf(guard, condition, ifBody)),
-    //     &*Box::from(ts.createReturn(guard,
-    //         recurse
-    //     )),
-    // ];
+    let recurse = ts.createBinary(guard,
+        &*Box::from(paramName),
+        &*Box::from(ts::SyntaxKind_AsteriskToken_new()),
+        &*Box::from(ts.createCall(guard, &*Box::from(functionName), /*typeArgs*/ None, &[&*Box::from(decrementedArg)])));
+    let statements = &[
+        &*Box::from(ts.createIf(guard, &*Box::from(condition), &*Box::from(ifBody))),
+        &*Box::from(ts.createReturn(guard,
+            &*Box::from(recurse)
+        )),
+    ];
 
-    // ts.createFunctionDeclaration(guard,
-    //     /*decorators*/ None,
-    //     /*modifiers*/&[&*Box::from(ts.createToken(ts::SyntaxKind::ExportKeyword))],
-    //     /*asteriskToken*/ None,
-    //     functionName,
-    //     /*typeParameters*/ None,
-    //     [parameter],
-    //     /*returnType*/ ts.createKeywordTypeNode(guard, ts::SyntaxKind::NumberKeyword),
-    //     ts.createBlock(guard, statements, /*multiline*/ true),
-    // );
+    let fnd = ts.createFunctionDeclaration(guard,
+        /*decorators*/ None,
+        /*modifiers*/Some(&[&*Box::from(ts.createToken(guard, &*Box::from(ts::SyntaxKind_ExportKeyword_new())))]),
+        /*asteriskToken*/ None,
+        Some(&*functionName2),
+        /*typeParameters*/ None,
+        &[&*parameter],
+        /*returnType*/ Some(&*Box::from(ts.createKeywordTypeNode(guard, &*Box::from(ts::SyntaxKind_NumberKeyword_new())))),
+        Some(&*ts.createBlock(guard, statements, /*multiline*/ true)),
+    );
 
-    Box::from(decrementedArg)
+    Box::from(fnd)
 }
 
 fn main() {
@@ -69,5 +70,5 @@ fn main() {
     let node = &*makeFactorialFunction(&guard, &*ts);
     let result = printer.printNode(&guard, &*Box::from(ts::EmitHint_Unspecified_new()), node, &*resultFile);
 
-    println!("result: {}", result);
+    println!("{}", result);
 }

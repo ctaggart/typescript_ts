@@ -214,6 +214,88 @@ pub trait TsMod : GetObject {
         ]);
         Box::new(ObjectBox { object: rv.unwrap().into_object().unwrap() })
     }
+
+    // function createCall(expression: Expression, typeArguments: ReadonlyArray<TypeNode> | undefined, argumentsArray: ReadonlyArray<Expression>): CallExpression;
+    fn createCall(&self, guard: &chakracore::context::ContextGuard, expression: &Expression, typeArguments: Option<&[&TypeNode]>, argumentsArray: &[&Expression]) -> Box<CallExpression> {
+        let this = self.object();
+        let function = this.get(guard, &chakracore::Property::new(guard, "createCall")).into_function().unwrap();
+        
+        let argumentsArray_length = argumentsArray.len() as u32;
+        let argumentsArray_array = chakracore::value::Array::new(guard, argumentsArray_length);
+        for i in 0..argumentsArray_length {
+            argumentsArray_array.set_index(guard, i, argumentsArray[i as usize].object());
+        }
+        
+        let rv = function.call_with_this(guard, this, &[
+            expression.object(),
+            &chakracore::value::undefined(guard), // TODO typeArguments
+            &argumentsArray_array,
+        ]);
+        Box::new(ObjectBox { object: rv.unwrap().into_object().unwrap() })
+    }
+
+    // function createIf(expression: Expression, thenStatement: Statement, elseStatement?: Statement): IfStatement;
+    fn createIf(&self, guard: &chakracore::context::ContextGuard, expression: &Expression, thenStatement: &Statement) -> Box<IfStatement> {
+        let this = self.object();
+        let function = this.get(guard, &chakracore::Property::new(guard, "createIf")).into_function().unwrap();
+        let rv = function.call_with_this(guard, this, &[
+            expression.object(),
+            thenStatement.object(),
+        ]);
+        Box::new(ObjectBox { object: rv.unwrap().into_object().unwrap() })
+    }
+
+    // function createKeywordTypeNode(kind: KeywordTypeNode["kind"]): KeywordTypeNode;
+    fn createKeywordTypeNode(&self, guard: &chakracore::context::ContextGuard, kind: &SyntaxKind) -> Box<KeywordTypeNode> {
+        let this = self.object();
+        let function = this.get(guard, &chakracore::Property::new(guard, "createKeywordTypeNode")).into_function().unwrap();
+        let rv = function.call_with_this(guard, this, &[
+            &chakracore::value::Number::new(guard, kind.id()).into(),
+        ]);
+        Box::new(ObjectBox { object: rv.unwrap().into_object().unwrap() })
+    }
+
+    // function createToken<TKind extends SyntaxKind>(token: TKind): Token<TKind>;
+    fn createToken(&self, guard: &chakracore::context::ContextGuard, token: &SyntaxKind) -> Box<Token> {
+        let this = self.object();
+        let function = this.get(guard, &chakracore::Property::new(guard, "createToken")).into_function().unwrap();
+        let rv = function.call_with_this(guard, this, &[
+            &chakracore::value::Number::new(guard, token.id()).into(),
+        ]);
+        Box::new(ObjectBox { object: rv.unwrap().into_object().unwrap() })
+    }
+
+    // function createFunctionDeclaration(decorators: ReadonlyArray<Decorator> | undefined, modifiers: ReadonlyArray<Modifier> | undefined, asteriskToken: AsteriskToken | undefined, name: string | Identifier | undefined, typeParameters: ReadonlyArray<TypeParameterDeclaration> | undefined, parameters: ReadonlyArray<ParameterDeclaration>, type: TypeNode | undefined, body: Block | undefined): FunctionDeclaration;
+    fn createFunctionDeclaration(&self, guard: &chakracore::context::ContextGuard, decorators: Option<&[&Decorator]>, modifiers: Option<&[&Token]>, asteriskToken: Option<&AsteriskToken>, name: Option<&Identifier>, typeParameters: Option<&[&TypeParameterDeclaration]>, parameters: &[&ParameterDeclaration], type_: Option<&TypeNode>, body: Option<&Block>) -> Box<FunctionDeclaration> {
+        let this = self.object();
+        let function = this.get(guard, &chakracore::Property::new(guard, "createFunctionDeclaration")).into_function().unwrap();
+        
+        let modifiers = modifiers.unwrap();
+        let modifiers_length = modifiers.len() as u32;
+        let modifiers_array = chakracore::value::Array::new(guard, modifiers_length);
+        for i in 0..modifiers_length {
+            modifiers_array.set_index(guard, i, modifiers[i as usize].object());
+        }
+
+        let parameters_length = parameters.len() as u32;
+        let parameters_array = chakracore::value::Array::new(guard, parameters_length);
+        for i in 0..parameters_length {
+            parameters_array.set_index(guard, i, parameters[i as usize].object());
+        }
+        
+        let rv = function.call_with_this(guard, this, &[
+            &chakracore::value::undefined(guard), // TODO decorators
+            &modifiers_array,
+            &chakracore::value::undefined(guard), // TODO asteriskToken
+            name.unwrap().object(),
+            &chakracore::value::undefined(guard), // TODO typeParameters
+            &parameters_array,
+            type_.unwrap().object(),
+            body.unwrap().object(),
+        ]);
+        Box::new(ObjectBox { object: rv.unwrap().into_object().unwrap() })
+    }
+
 }
 impl TsMod for ObjectBox {}
 
@@ -281,7 +363,7 @@ impl From<Box<NumericLiteral>> for Box<Expression> {
     }
 }
 
-pub trait ParameterDeclaration {}
+pub trait ParameterDeclaration: GetObject {}
 impl ParameterDeclaration for ObjectBox {}
 
 pub trait PrinterOptions : GetObject  {
@@ -366,6 +448,69 @@ impl From<Box<SyntaxKind_MinusToken>> for Box<SyntaxKind> {
 impl From<Box<SyntaxKind_MinusToken>> for Box<BinaryOperator> {
     fn from(v: Box<SyntaxKind_MinusToken>) -> Box<BinaryOperator> {
         Box::new(IdBox { id: SyntaxKind_MinusToken::id(&*v) })
+    }
+}
+
+pub trait SyntaxKind_AsteriskToken {}
+impl GetId for SyntaxKind_AsteriskToken {
+    fn id(&self) -> i32 { 
+        SyntaxKindEnum::AsteriskToken as i32
+    }
+}
+impl SyntaxKind_AsteriskToken for Enum {}
+pub fn SyntaxKind_AsteriskToken_new() -> Box<SyntaxKind_AsteriskToken> {
+    Box::new(Enum {})
+}
+impl From<Box<SyntaxKind_AsteriskToken>> for Box<SyntaxKind> {
+    fn from(v: Box<SyntaxKind_AsteriskToken>) -> Box<SyntaxKind> {
+        Box::new(IdBox { id: SyntaxKind_AsteriskToken::id(&*v) })
+    }
+}
+impl From<Box<SyntaxKind_AsteriskToken>> for Box<BinaryOperator> {
+    fn from(v: Box<SyntaxKind_AsteriskToken>) -> Box<BinaryOperator> {
+        Box::new(IdBox { id: SyntaxKind_AsteriskToken::id(&*v) })
+    }
+}
+
+pub trait SyntaxKind_ExportKeyword {}
+impl GetId for SyntaxKind_ExportKeyword {
+    fn id(&self) -> i32 { 
+        SyntaxKindEnum::ExportKeyword as i32
+    }
+}
+impl SyntaxKind_ExportKeyword for Enum {}
+pub fn SyntaxKind_ExportKeyword_new() -> Box<SyntaxKind_ExportKeyword> {
+    Box::new(Enum {})
+}
+impl From<Box<SyntaxKind_ExportKeyword>> for Box<SyntaxKind> {
+    fn from(v: Box<SyntaxKind_ExportKeyword>) -> Box<SyntaxKind> {
+        Box::new(IdBox { id: SyntaxKind_ExportKeyword::id(&*v) })
+    }
+}
+impl From<Box<SyntaxKind_ExportKeyword>> for Box<BinaryOperator> {
+    fn from(v: Box<SyntaxKind_ExportKeyword>) -> Box<BinaryOperator> {
+        Box::new(IdBox { id: SyntaxKind_ExportKeyword::id(&*v) })
+    }
+}
+
+pub trait SyntaxKind_NumberKeyword {}
+impl GetId for SyntaxKind_NumberKeyword {
+    fn id(&self) -> i32 { 
+        SyntaxKindEnum::NumberKeyword as i32
+    }
+}
+impl SyntaxKind_NumberKeyword for Enum {}
+pub fn SyntaxKind_NumberKeyword_new() -> Box<SyntaxKind_NumberKeyword> {
+    Box::new(Enum {})
+}
+impl From<Box<SyntaxKind_NumberKeyword>> for Box<SyntaxKind> {
+    fn from(v: Box<SyntaxKind_NumberKeyword>) -> Box<SyntaxKind> {
+        Box::new(IdBox { id: SyntaxKind_NumberKeyword::id(&*v) })
+    }
+}
+impl From<Box<SyntaxKind_NumberKeyword>> for Box<BinaryOperator> {
+    fn from(v: Box<SyntaxKind_NumberKeyword>) -> Box<BinaryOperator> {
+        Box::new(IdBox { id: SyntaxKind_NumberKeyword::id(&*v) })
     }
 }
 
@@ -956,11 +1101,41 @@ impl From<Box<EmitHint_Unspecified>> for Box<EmitHint> {
 pub trait Statement: GetObject {}
 impl Statement for ObjectBox {}
 
+pub trait IfStatement: GetObject {}
+impl IfStatement for ObjectBox {}
+
 pub trait Block: GetObject {}
 impl Block for ObjectBox {}
 
 pub trait ReturnStatement: GetObject {}
 impl ReturnStatement for ObjectBox {}
+
+pub trait TypeNode: GetObject {}
+impl TypeNode for ObjectBox {}
+
+pub trait CallExpression: GetObject {}
+impl CallExpression for ObjectBox {}
+
+pub trait KeywordTypeNode: GetObject {}
+impl KeywordTypeNode for ObjectBox {}
+
+pub trait Token: GetObject {}
+impl Token for ObjectBox {}
+
+pub trait FunctionDeclaration: GetObject {}
+impl FunctionDeclaration for ObjectBox {}
+
+pub trait TypeParameterDeclaration: GetObject {}
+impl TypeParameterDeclaration for ObjectBox {}
+
+pub trait AsteriskToken: GetObject {}
+impl AsteriskToken for ObjectBox {}
+
+pub trait Modifier: GetObject {}
+impl Modifier for ObjectBox {}
+
+pub trait Decorator: GetObject {}
+impl Decorator for ObjectBox {}
 
 impl From<Box<Identifier>> for Box<Node> {
     fn from(v: Box<Identifier>) -> Box<Node> {
@@ -980,14 +1155,50 @@ impl From<Box<BinaryExpression>> for Box<Node> {
     }
 }
 
+impl From<Box<FunctionDeclaration>> for Box<Node> {
+    fn from(v: Box<FunctionDeclaration>) -> Box<Node> {
+        Box::new(ObjectBox { object: chakracore::value::Object::clone(&*v.object())})
+    }
+}
+
 impl From<Box<Block>> for Box<Node> {
     fn from(v: Box<Block>) -> Box<Node> {
         Box::new(ObjectBox { object: chakracore::value::Object::clone(&*v.object())})
     }
 }
 
+impl From<Box<Block>> for Box<Statement> {
+    fn from(v: Box<Block>) -> Box<Statement> {
+        Box::new(ObjectBox { object: chakracore::value::Object::clone(&*v.object())})
+    }
+}
+
+impl From<Box<IfStatement>> for Box<Statement> {
+    fn from(v: Box<IfStatement>) -> Box<Statement> {
+        Box::new(ObjectBox { object: chakracore::value::Object::clone(&*v.object())})
+    }
+}
+
 impl From<Box<ReturnStatement>> for Box<Statement> {
     fn from(v: Box<ReturnStatement>) -> Box<Statement> {
+        Box::new(ObjectBox { object: chakracore::value::Object::clone(&*v.object())})
+    }
+}
+
+impl From<Box<CallExpression>> for Box<Expression> {
+    fn from(v: Box<CallExpression>) -> Box<Expression> {
+        Box::new(ObjectBox { object: chakracore::value::Object::clone(&*v.object())})
+    }
+}
+
+impl From<Box<BinaryExpression>> for Box<Expression> {
+    fn from(v: Box<BinaryExpression>) -> Box<Expression> {
+        Box::new(ObjectBox { object: chakracore::value::Object::clone(&*v.object())})
+    }
+}
+
+impl From<Box<KeywordTypeNode>> for Box<TypeNode> {
+    fn from(v: Box<KeywordTypeNode>) -> Box<TypeNode> {
         Box::new(ObjectBox { object: chakracore::value::Object::clone(&*v.object())})
     }
 }
