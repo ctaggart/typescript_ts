@@ -30,11 +30,53 @@ pub struct ObjectBox {
     object: chakracore::value::Object,
 }
 
+impl ObjectBox {
+    pub fn new(guard: &chakracore::context::ContextGuard) -> Self {
+        ObjectBox { object: chakracore::value::Object::new(guard) }
+    }
+}
+
 impl GetObject for ObjectBox {
     fn object(&self) -> &chakracore::value::Object {
         &self.object
     }
 }
+
+pub trait GetNumber {
+    fn number(&self) -> &chakracore::value::Number;
+}
+
+pub struct NumberBox {
+    number: chakracore::value::Number,
+}
+
+impl NumberBox {
+    pub fn new(guard: &chakracore::context::ContextGuard, number: i32) -> NumberBox {
+        NumberBox { number: chakracore::value::Number::new(guard, number) }
+    }
+}
+
+impl GetNumber for NumberBox {
+    fn number(&self) -> &chakracore::value::Number {
+        &self.number
+    }
+}
+
+pub trait GetId {
+    fn id(&self) -> i32;
+}
+
+pub struct IdBox {
+    id: i32,
+}
+
+impl GetId for IdBox {
+    fn id(&self) -> i32 {
+        self.id
+    }
+}
+
+pub struct Enum;
 
 pub fn new_context() -> (chakracore::Runtime, chakracore::Context) {
     let runtime = chakracore::Runtime::new().unwrap();
@@ -62,13 +104,12 @@ pub trait TsMod : GetObject {
         self.object().get(guard, &chakracore::Property::new(guard, "version")).to_string(guard)
     }
 
-// createNode(kind: SyntaxKind, pos?: number, end?: number): Node;
-    fn createNode(&self, guard: &chakracore::context::ContextGuard, kind: SyntaxKind, pos: Option<i32>, end: Option<i32> ) -> Box<Node> {
-        let SyntaxKind(kind_) = kind; 
-        let tsmod = self.object();
-        let function = tsmod.get(guard, &chakracore::Property::new(guard, "createNode")).into_function().unwrap();
-        let rv = function.call_with_this(guard, tsmod, &[
-            &chakracore::value::Number::new(guard, kind_).into(),
+    // createNode(kind: SyntaxKind, pos?: number, end?: number): Node;
+    fn createNode(&self, guard: &chakracore::context::ContextGuard, kind: &SyntaxKind, pos: Option<i32>, end: Option<i32> ) -> Box<Node> {
+        let this = self.object();
+        let function = this.get(guard, &chakracore::Property::new(guard, "createNode")).into_function().unwrap();
+        let rv = function.call_with_this(guard, this, &[
+            &chakracore::value::Number::new(guard, kind.id()).into(),
             &chakracore::value::Number::new(guard, pos.unwrap_or(-1)).into(),
             &chakracore::value::Number::new(guard, end.unwrap_or(-1)).into(),
         ]);
@@ -76,383 +117,752 @@ pub trait TsMod : GetObject {
         Box::new(ObjectBox { object: node })
     }
 
-// function createParameter(decorators: ReadonlyArray<Decorator> | undefined, modifiers: ReadonlyArray<Modifier> | undefined, dotDotDotToken: DotDotDotToken | undefined, name: string | BindingName, questionToken?: QuestionToken, type?: TypeNode, initializer?: Expression): ParameterDeclaration;
+    // function createParameter(decorators: ReadonlyArray<Decorator> | undefined, modifiers: ReadonlyArray<Modifier> | undefined, dotDotDotToken: DotDotDotToken | undefined, name: string | BindingName, questionToken?: QuestionToken, type?: TypeNode, initializer?: Expression): ParameterDeclaration;
+    fn createParameter(&self, guard: &chakracore::context::ContextGuard, name: &Identifier) -> Box<ParameterDeclaration> {
+        let this = self.object();
+        let function = this.get(guard, &chakracore::Property::new(guard, "createParameter")).into_function().unwrap();
+        let rv = function.call_with_this(guard, this, &[
+            &chakracore::value::undefined(guard),
+            &chakracore::value::undefined(guard),
+            &chakracore::value::undefined(guard),
+            name.object(),
+        ]);
+        Box::new(ObjectBox { object: rv.unwrap().into_object().unwrap() })
+    }
 
+    // function createIdentifier(text: string): Identifier;
+    fn createIdentifier(&self, guard: &chakracore::context::ContextGuard, text: &str) -> Box<Identifier> {
+        let this = self.object();
+        let function = this.get(guard, &chakracore::Property::new(guard, "createIdentifier")).into_function().unwrap();
+        let rv = function.call_with_this(guard, this, &[
+            &chakracore::value::String::new(guard, text).into(),
+        ]);
+        Box::new(ObjectBox { object: rv.unwrap().into_object().unwrap() })
+    }
+
+    // function createLiteral(value: number): NumericLiteral;
+    fn createLiteral_number(&self, guard: &chakracore::context::ContextGuard, value: i32) -> Box<NumericLiteral> {
+        let this = self.object();
+        let function = this.get(guard, &chakracore::Property::new(guard, "createLiteral")).into_function().unwrap();
+        let rv = function.call_with_this(guard, this, &[
+            &chakracore::value::Number::new(guard, value).into(),
+        ]);
+        Box::new(ObjectBox { object: rv.unwrap().into_object().unwrap() })
+    }
+
+    // function createBinary(left: Expression, operator: BinaryOperator | BinaryOperatorToken, right: Expression): BinaryExpression;
+    fn createBinary(&self, guard: &chakracore::context::ContextGuard, left: &Expression, operator: &BinaryOperator, right: &Expression) -> Box<BinaryExpression> {
+        let this = self.object();
+        let function = this.get(guard, &chakracore::Property::new(guard, "createBinary")).into_function().unwrap();
+        let rv = function.call_with_this(guard, this, &[
+            left.object(),
+            &chakracore::value::Number::new(guard, operator.id()).into(),
+            right.object(),
+        ]);
+        Box::new(ObjectBox { object: rv.unwrap().into_object().unwrap() })
+    }
+
+    // function createBlock(statements: ReadonlyArray<Statement>, multiLine?: boolean): Block;
+    fn createBlock(&self, guard: &chakracore::context::ContextGuard, statements: &[&Statement], multiLine: bool ) -> Box<Block> {
+        let this = self.object();
+        let function = this.get(guard, &chakracore::Property::new(guard, "createBlock")).into_function().unwrap();
+
+        let statements_length = statements.len() as u32;
+        let statements_array = chakracore::value::Array::new(guard, statements_length);
+        for i in 0..statements_length {
+            statements_array.set_index(guard, i, statements[i as usize].object());
+        }
+
+        let rv = function.call_with_this(guard, this, &[
+            &statements_array,
+            &chakracore::value::Boolean::new(guard, multiLine).into(),
+        ]);
+        Box::new(ObjectBox { object: rv.unwrap().into_object().unwrap() })
+    }
+
+    // function createSourceFile(fileName: string, sourceText: string, languageVersion: ScriptTarget, setParentNodes?: boolean, scriptKind?: ScriptKind): SourceFile;
+    // ts.createSourceFile("someFileName.ts", "", ts::ScriptTarget::Latest, /*setParentNodes*/ false, ts::ScriptKind::TS);
+    fn createSourceFile(&self, guard: &chakracore::context::ContextGuard, fileName: &str, sourceText: &str, languageVersion: &ScriptTarget, setParentNodes: bool, scriptKind: &ScriptKind) -> Box<SourceFile> {
+        let this = self.object();
+        let function = this.get(guard, &chakracore::Property::new(guard, "createSourceFile")).into_function().unwrap();
+        let rv = function.call_with_this(guard, this, &[
+            &chakracore::value::String::new(guard, fileName).into(),
+            &chakracore::value::String::new(guard, sourceText).into(),
+            &chakracore::value::Number::new(guard, languageVersion.id()).into(),
+            &chakracore::value::Boolean::new(guard, setParentNodes).into(),
+            &chakracore::value::Number::new(guard, scriptKind.id()).into(),
+        ]);
+        Box::new(ObjectBox { object: rv.unwrap().into_object().unwrap() })
+    }
+
+    // function createPrinter(printerOptions?: PrinterOptions, handlers?: PrintHandlers): Printer;
+    fn createPrinter(&self, guard: &chakracore::context::ContextGuard, printerOptions: &PrinterOptions) -> Box<Printer> {
+        let this = self.object();
+        let function = this.get(guard, &chakracore::Property::new(guard, "createPrinter")).into_function().unwrap();
+        let rv = function.call_with_this(guard, this, &[
+            printerOptions.object()
+        ]);
+        Box::new(ObjectBox { object: rv.unwrap().into_object().unwrap() })
+    }
+
+    // function createReturn(expression?: Expression): ReturnStatement;
+    fn createReturn(&self, guard: &chakracore::context::ContextGuard, expression: &Expression) -> Box<ReturnStatement> {
+        let this = self.object();
+        let function = this.get(guard, &chakracore::Property::new(guard, "createReturn")).into_function().unwrap();
+        let rv = function.call_with_this(guard, this, &[
+            expression.object(),
+        ]);
+        Box::new(ObjectBox { object: rv.unwrap().into_object().unwrap() })
+    }
+
+    // function createCall(expression: Expression, typeArguments: ReadonlyArray<TypeNode> | undefined, argumentsArray: ReadonlyArray<Expression>): CallExpression;
+    fn createCall(&self, guard: &chakracore::context::ContextGuard, expression: &Expression, typeArguments: Option<&[&TypeNode]>, argumentsArray: &[&Expression]) -> Box<CallExpression> {
+        let this = self.object();
+        let function = this.get(guard, &chakracore::Property::new(guard, "createCall")).into_function().unwrap();
+        
+        let argumentsArray_length = argumentsArray.len() as u32;
+        let argumentsArray_array = chakracore::value::Array::new(guard, argumentsArray_length);
+        for i in 0..argumentsArray_length {
+            argumentsArray_array.set_index(guard, i, argumentsArray[i as usize].object());
+        }
+        
+        let rv = function.call_with_this(guard, this, &[
+            expression.object(),
+            &chakracore::value::undefined(guard), // TODO typeArguments
+            &argumentsArray_array,
+        ]);
+        Box::new(ObjectBox { object: rv.unwrap().into_object().unwrap() })
+    }
+
+    // function createIf(expression: Expression, thenStatement: Statement, elseStatement?: Statement): IfStatement;
+    fn createIf(&self, guard: &chakracore::context::ContextGuard, expression: &Expression, thenStatement: &Statement) -> Box<IfStatement> {
+        let this = self.object();
+        let function = this.get(guard, &chakracore::Property::new(guard, "createIf")).into_function().unwrap();
+        let rv = function.call_with_this(guard, this, &[
+            expression.object(),
+            thenStatement.object(),
+        ]);
+        Box::new(ObjectBox { object: rv.unwrap().into_object().unwrap() })
+    }
+
+    // function createKeywordTypeNode(kind: KeywordTypeNode["kind"]): KeywordTypeNode;
+    fn createKeywordTypeNode(&self, guard: &chakracore::context::ContextGuard, kind: &SyntaxKind) -> Box<KeywordTypeNode> {
+        let this = self.object();
+        let function = this.get(guard, &chakracore::Property::new(guard, "createKeywordTypeNode")).into_function().unwrap();
+        let rv = function.call_with_this(guard, this, &[
+            &chakracore::value::Number::new(guard, kind.id()).into(),
+        ]);
+        Box::new(ObjectBox { object: rv.unwrap().into_object().unwrap() })
+    }
+
+    // function createToken<TKind extends SyntaxKind>(token: TKind): Token<TKind>;
+    fn createToken(&self, guard: &chakracore::context::ContextGuard, token: &SyntaxKind) -> Box<Token> {
+        let this = self.object();
+        let function = this.get(guard, &chakracore::Property::new(guard, "createToken")).into_function().unwrap();
+        let rv = function.call_with_this(guard, this, &[
+            &chakracore::value::Number::new(guard, token.id()).into(),
+        ]);
+        Box::new(ObjectBox { object: rv.unwrap().into_object().unwrap() })
+    }
+
+    // function createFunctionDeclaration(decorators: ReadonlyArray<Decorator> | undefined, modifiers: ReadonlyArray<Modifier> | undefined, asteriskToken: AsteriskToken | undefined, name: string | Identifier | undefined, typeParameters: ReadonlyArray<TypeParameterDeclaration> | undefined, parameters: ReadonlyArray<ParameterDeclaration>, type: TypeNode | undefined, body: Block | undefined): FunctionDeclaration;
+    fn createFunctionDeclaration(&self, guard: &chakracore::context::ContextGuard, decorators: Option<&[&Decorator]>, modifiers: Option<&[&Token]>, asteriskToken: Option<&AsteriskToken>, name: Option<&Identifier>, typeParameters: Option<&[&TypeParameterDeclaration]>, parameters: &[&ParameterDeclaration], type_: Option<&TypeNode>, body: Option<&Block>) -> Box<FunctionDeclaration> {
+        let this = self.object();
+        let function = this.get(guard, &chakracore::Property::new(guard, "createFunctionDeclaration")).into_function().unwrap();
+        
+        let modifiers = modifiers.unwrap();
+        let modifiers_length = modifiers.len() as u32;
+        let modifiers_array = chakracore::value::Array::new(guard, modifiers_length);
+        for i in 0..modifiers_length {
+            modifiers_array.set_index(guard, i, modifiers[i as usize].object());
+        }
+
+        let parameters_length = parameters.len() as u32;
+        let parameters_array = chakracore::value::Array::new(guard, parameters_length);
+        for i in 0..parameters_length {
+            parameters_array.set_index(guard, i, parameters[i as usize].object());
+        }
+        
+        let rv = function.call_with_this(guard, this, &[
+            &chakracore::value::undefined(guard), // TODO decorators
+            &modifiers_array,
+            &chakracore::value::undefined(guard), // TODO asteriskToken
+            name.unwrap().object(),
+            &chakracore::value::undefined(guard), // TODO typeParameters
+            &parameters_array,
+            type_.unwrap().object(),
+            body.unwrap().object(),
+        ]);
+        Box::new(ObjectBox { object: rv.unwrap().into_object().unwrap() })
+    }
 
 }
-
 impl TsMod for ObjectBox {}
 
-pub trait Node : GetObject + TextRange {
+pub trait Node: GetObject + TextRange {
     fn kind(&self, guard: &chakracore::context::ContextGuard) -> i32 {
         let kind = self.object().get(&guard, &chakracore::Property::new(&guard, "kind"));
         kind.into_number().unwrap().value()
     }
 }
-
 impl Node for ObjectBox {}
 
-pub trait TextRange {
-
-}
-
+pub trait TextRange {}
 impl TextRange for ObjectBox {}
 
-pub trait Declaration: Node {
-
-}
+pub trait Declaration: Node {}
 
 impl Declaration for ObjectBox {}
 
 pub trait SourceFile: Declaration {
-
+    fn fileName(&self, guard: &chakracore::context::ContextGuard) -> String {
+        let this = self.object();
+        this.get(guard, &chakracore::Property::new(guard, "fileName")).into_string().unwrap().value()
+    }
 }
-
 impl SourceFile for ObjectBox {}
 
-pub trait Identifier {
+// interface Expression extends Node {
+//     _expressionBrand: any;
+// }
+pub trait Expression: Node {}
+impl Expression for ObjectBox {}
 
+// https://stackoverflow.com/a/28664881/23059
+pub trait AsExpression {
+    fn as_Expression(&self) -> &Expression;
+}
+impl<T: Expression> AsExpression for T {
+    fn as_Expression(&self) -> &Expression { self }
 }
 
+pub trait UnaryExpression: Expression {}
+impl UnaryExpression for ObjectBox {}
+
+pub trait UpdateExpression: UnaryExpression {}
+impl UpdateExpression for ObjectBox {}
+
+pub trait LeftHandSideExpression: UpdateExpression {}
+impl LeftHandSideExpression for ObjectBox {}
+
+pub trait MemberExpression: LeftHandSideExpression {}
+impl MemberExpression for ObjectBox {}
+
+pub trait PrimaryExpression: MemberExpression {}
+impl PrimaryExpression for ObjectBox {}
+
+pub trait Identifier: GetObject + PrimaryExpression + AsExpression {}
 impl Identifier for ObjectBox {}
 
+pub trait NumericLiteral: GetObject {}
+impl NumericLiteral for ObjectBox {}
 
-
-
-pub struct SyntaxKind(i32);
-impl SyntaxKind {
-    pub const Unknown: SyntaxKind = SyntaxKind(0);
-    pub const EndOfFileToken: SyntaxKind = SyntaxKind(1);
-    pub const SingleLineCommentTrivia: SyntaxKind = SyntaxKind(2);
-    pub const MultiLineCommentTrivia: SyntaxKind = SyntaxKind(3);
-    pub const NewLineTrivia: SyntaxKind = SyntaxKind(4);
-    pub const WhitespaceTrivia: SyntaxKind = SyntaxKind(5);
-    pub const ShebangTrivia: SyntaxKind = SyntaxKind(6);
-    pub const ConflictMarkerTrivia: SyntaxKind = SyntaxKind(7);
-    pub const NumericLiteral: SyntaxKind = SyntaxKind(8);
-    pub const StringLiteral: SyntaxKind = SyntaxKind(9);
-    pub const JsxText: SyntaxKind = SyntaxKind(10);
-    pub const JsxTextAllWhiteSpaces: SyntaxKind = SyntaxKind(11);
-    pub const RegularExpressionLiteral: SyntaxKind = SyntaxKind(12);
-    pub const NoSubstitutionTemplateLiteral: SyntaxKind = SyntaxKind(13);
-    pub const TemplateHead: SyntaxKind = SyntaxKind(14);
-    pub const TemplateMiddle: SyntaxKind = SyntaxKind(15);
-    pub const TemplateTail: SyntaxKind = SyntaxKind(16);
-    pub const OpenBraceToken: SyntaxKind = SyntaxKind(17);
-    pub const CloseBraceToken: SyntaxKind = SyntaxKind(18);
-    pub const OpenParenToken: SyntaxKind = SyntaxKind(19);
-    pub const CloseParenToken: SyntaxKind = SyntaxKind(20);
-    pub const OpenBracketToken: SyntaxKind = SyntaxKind(21);
-    pub const CloseBracketToken: SyntaxKind = SyntaxKind(22);
-    pub const DotToken: SyntaxKind = SyntaxKind(23);
-    pub const DotDotDotToken: SyntaxKind = SyntaxKind(24);
-    pub const SemicolonToken: SyntaxKind = SyntaxKind(25);
-    pub const CommaToken: SyntaxKind = SyntaxKind(26);
-    pub const LessThanToken: SyntaxKind = SyntaxKind(27);
-    pub const LessThanSlashToken: SyntaxKind = SyntaxKind(28);
-    pub const GreaterThanToken: SyntaxKind = SyntaxKind(29);
-    pub const LessThanEqualsToken: SyntaxKind = SyntaxKind(30);
-    pub const GreaterThanEqualsToken: SyntaxKind = SyntaxKind(31);
-    pub const EqualsEqualsToken: SyntaxKind = SyntaxKind(32);
-    pub const ExclamationEqualsToken: SyntaxKind = SyntaxKind(33);
-    pub const EqualsEqualsEqualsToken: SyntaxKind = SyntaxKind(34);
-    pub const ExclamationEqualsEqualsToken: SyntaxKind = SyntaxKind(35);
-    pub const EqualsGreaterThanToken: SyntaxKind = SyntaxKind(36);
-    pub const PlusToken: SyntaxKind = SyntaxKind(37);
-    pub const MinusToken: SyntaxKind = SyntaxKind(38);
-    pub const AsteriskToken: SyntaxKind = SyntaxKind(39);
-    pub const AsteriskAsteriskToken: SyntaxKind = SyntaxKind(40);
-    pub const SlashToken: SyntaxKind = SyntaxKind(41);
-    pub const PercentToken: SyntaxKind = SyntaxKind(42);
-    pub const PlusPlusToken: SyntaxKind = SyntaxKind(43);
-    pub const MinusMinusToken: SyntaxKind = SyntaxKind(44);
-    pub const LessThanLessThanToken: SyntaxKind = SyntaxKind(45);
-    pub const GreaterThanGreaterThanToken: SyntaxKind = SyntaxKind(46);
-    pub const GreaterThanGreaterThanGreaterThanToken: SyntaxKind = SyntaxKind(47);
-    pub const AmpersandToken: SyntaxKind = SyntaxKind(48);
-    pub const BarToken: SyntaxKind = SyntaxKind(49);
-    pub const CaretToken: SyntaxKind = SyntaxKind(50);
-    pub const ExclamationToken: SyntaxKind = SyntaxKind(51);
-    pub const TildeToken: SyntaxKind = SyntaxKind(52);
-    pub const AmpersandAmpersandToken: SyntaxKind = SyntaxKind(53);
-    pub const BarBarToken: SyntaxKind = SyntaxKind(54);
-    pub const QuestionToken: SyntaxKind = SyntaxKind(55);
-    pub const ColonToken: SyntaxKind = SyntaxKind(56);
-    pub const AtToken: SyntaxKind = SyntaxKind(57);
-    pub const EqualsToken: SyntaxKind = SyntaxKind(58);
-    pub const PlusEqualsToken: SyntaxKind = SyntaxKind(59);
-    pub const MinusEqualsToken: SyntaxKind = SyntaxKind(60);
-    pub const AsteriskEqualsToken: SyntaxKind = SyntaxKind(61);
-    pub const AsteriskAsteriskEqualsToken: SyntaxKind = SyntaxKind(62);
-    pub const SlashEqualsToken: SyntaxKind = SyntaxKind(63);
-    pub const PercentEqualsToken: SyntaxKind = SyntaxKind(64);
-    pub const LessThanLessThanEqualsToken: SyntaxKind = SyntaxKind(65);
-    pub const GreaterThanGreaterThanEqualsToken: SyntaxKind = SyntaxKind(66);
-    pub const GreaterThanGreaterThanGreaterThanEqualsToken: SyntaxKind = SyntaxKind(67);
-    pub const AmpersandEqualsToken: SyntaxKind = SyntaxKind(68);
-    pub const BarEqualsToken: SyntaxKind = SyntaxKind(69);
-    pub const CaretEqualsToken: SyntaxKind = SyntaxKind(70);
-    pub const Identifier: SyntaxKind = SyntaxKind(71);
-    pub const BreakKeyword: SyntaxKind = SyntaxKind(72);
-    pub const CaseKeyword: SyntaxKind = SyntaxKind(73);
-    pub const CatchKeyword: SyntaxKind = SyntaxKind(74);
-    pub const ClassKeyword: SyntaxKind = SyntaxKind(75);
-    pub const ConstKeyword: SyntaxKind = SyntaxKind(76);
-    pub const ContinueKeyword: SyntaxKind = SyntaxKind(77);
-    pub const DebuggerKeyword: SyntaxKind = SyntaxKind(78);
-    pub const DefaultKeyword: SyntaxKind = SyntaxKind(79);
-    pub const DeleteKeyword: SyntaxKind = SyntaxKind(80);
-    pub const DoKeyword: SyntaxKind = SyntaxKind(81);
-    pub const ElseKeyword: SyntaxKind = SyntaxKind(82);
-    pub const traitKeyword: SyntaxKind = SyntaxKind(83);
-    pub const ExportKeyword: SyntaxKind = SyntaxKind(84);
-    pub const ExtendsKeyword: SyntaxKind = SyntaxKind(85);
-    pub const FalseKeyword: SyntaxKind = SyntaxKind(86);
-    pub const FinallyKeyword: SyntaxKind = SyntaxKind(87);
-    pub const ForKeyword: SyntaxKind = SyntaxKind(88);
-    pub const FunctionKeyword: SyntaxKind = SyntaxKind(89);
-    pub const IfKeyword: SyntaxKind = SyntaxKind(90);
-    pub const ImportKeyword: SyntaxKind = SyntaxKind(91);
-    pub const InKeyword: SyntaxKind = SyntaxKind(92);
-    pub const InstanceOfKeyword: SyntaxKind = SyntaxKind(93);
-    pub const NewKeyword: SyntaxKind = SyntaxKind(94);
-    pub const NullKeyword: SyntaxKind = SyntaxKind(95);
-    pub const ReturnKeyword: SyntaxKind = SyntaxKind(96);
-    pub const SuperKeyword: SyntaxKind = SyntaxKind(97);
-    pub const SwitchKeyword: SyntaxKind = SyntaxKind(98);
-    pub const ThisKeyword: SyntaxKind = SyntaxKind(99);
-    pub const ThrowKeyword: SyntaxKind = SyntaxKind(100);
-    pub const TrueKeyword: SyntaxKind = SyntaxKind(101);
-    pub const TryKeyword: SyntaxKind = SyntaxKind(102);
-    pub const TypeOfKeyword: SyntaxKind = SyntaxKind(103);
-    pub const VarKeyword: SyntaxKind = SyntaxKind(104);
-    pub const VoidKeyword: SyntaxKind = SyntaxKind(105);
-    pub const WhileKeyword: SyntaxKind = SyntaxKind(106);
-    pub const WithKeyword: SyntaxKind = SyntaxKind(107);
-    pub const ImplementsKeyword: SyntaxKind = SyntaxKind(108);
-    pub const InterfaceKeyword: SyntaxKind = SyntaxKind(109);
-    pub const LetKeyword: SyntaxKind = SyntaxKind(110);
-    pub const PackageKeyword: SyntaxKind = SyntaxKind(111);
-    pub const PrivateKeyword: SyntaxKind = SyntaxKind(112);
-    pub const ProtectedKeyword: SyntaxKind = SyntaxKind(113);
-    pub const PublicKeyword: SyntaxKind = SyntaxKind(114);
-    pub const StaticKeyword: SyntaxKind = SyntaxKind(115);
-    pub const YieldKeyword: SyntaxKind = SyntaxKind(116);
-    pub const AbstractKeyword: SyntaxKind = SyntaxKind(117);
-    pub const AsKeyword: SyntaxKind = SyntaxKind(118);
-    pub const AnyKeyword: SyntaxKind = SyntaxKind(119);
-    pub const AsyncKeyword: SyntaxKind = SyntaxKind(120);
-    pub const AwaitKeyword: SyntaxKind = SyntaxKind(121);
-    pub const BooleanKeyword: SyntaxKind = SyntaxKind(122);
-    pub const ConstructorKeyword: SyntaxKind = SyntaxKind(123);
-    pub const DeclareKeyword: SyntaxKind = SyntaxKind(124);
-    pub const GetKeyword: SyntaxKind = SyntaxKind(125);
-    pub const IsKeyword: SyntaxKind = SyntaxKind(126);
-    pub const KeyOfKeyword: SyntaxKind = SyntaxKind(127);
-    pub const ModuleKeyword: SyntaxKind = SyntaxKind(128);
-    pub const NamespaceKeyword: SyntaxKind = SyntaxKind(129);
-    pub const NeverKeyword: SyntaxKind = SyntaxKind(130);
-    pub const ReadonlyKeyword: SyntaxKind = SyntaxKind(131);
-    pub const RequireKeyword: SyntaxKind = SyntaxKind(132);
-    pub const NumberKeyword: SyntaxKind = SyntaxKind(133);
-    pub const ObjectKeyword: SyntaxKind = SyntaxKind(134);
-    pub const SetKeyword: SyntaxKind = SyntaxKind(135);
-    pub const StringKeyword: SyntaxKind = SyntaxKind(136);
-    pub const SymbolKeyword: SyntaxKind = SyntaxKind(137);
-    pub const TypeKeyword: SyntaxKind = SyntaxKind(138);
-    pub const UndefinedKeyword: SyntaxKind = SyntaxKind(139);
-    pub const FromKeyword: SyntaxKind = SyntaxKind(140);
-    pub const GlobalKeyword: SyntaxKind = SyntaxKind(141);
-    pub const OfKeyword: SyntaxKind = SyntaxKind(142);
-    pub const QualifiedName: SyntaxKind = SyntaxKind(143);
-    pub const ComputedPropertyName: SyntaxKind = SyntaxKind(144);
-    pub const TypeParameter: SyntaxKind = SyntaxKind(145);
-    pub const Parameter: SyntaxKind = SyntaxKind(146);
-    pub const Decorator: SyntaxKind = SyntaxKind(147);
-    pub const PropertySignature: SyntaxKind = SyntaxKind(148);
-    pub const PropertyDeclaration: SyntaxKind = SyntaxKind(149);
-    pub const MethodSignature: SyntaxKind = SyntaxKind(150);
-    pub const MethodDeclaration: SyntaxKind = SyntaxKind(151);
-    pub const Constructor: SyntaxKind = SyntaxKind(152);
-    pub const GetAccessor: SyntaxKind = SyntaxKind(153);
-    pub const SetAccessor: SyntaxKind = SyntaxKind(154);
-    pub const CallSignature: SyntaxKind = SyntaxKind(155);
-    pub const ConstructSignature: SyntaxKind = SyntaxKind(156);
-    pub const IndexSignature: SyntaxKind = SyntaxKind(157);
-    pub const TypePredicate: SyntaxKind = SyntaxKind(158);
-    pub const TypeReference: SyntaxKind = SyntaxKind(159);
-    pub const FunctionType: SyntaxKind = SyntaxKind(160);
-    pub const ConstructorType: SyntaxKind = SyntaxKind(161);
-    pub const TypeQuery: SyntaxKind = SyntaxKind(162);
-    pub const TypeLiteral: SyntaxKind = SyntaxKind(163);
-    pub const ArrayType: SyntaxKind = SyntaxKind(164);
-    pub const TupleType: SyntaxKind = SyntaxKind(165);
-    pub const UnionType: SyntaxKind = SyntaxKind(166);
-    pub const IntersectionType: SyntaxKind = SyntaxKind(167);
-    pub const ParenthesizedType: SyntaxKind = SyntaxKind(168);
-    pub const ThisType: SyntaxKind = SyntaxKind(169);
-    pub const TypeOperator: SyntaxKind = SyntaxKind(170);
-    pub const IndexedAccessType: SyntaxKind = SyntaxKind(171);
-    pub const MappedType: SyntaxKind = SyntaxKind(172);
-    pub const LiteralType: SyntaxKind = SyntaxKind(173);
-    pub const ObjectBindingPattern: SyntaxKind = SyntaxKind(174);
-    pub const ArrayBindingPattern: SyntaxKind = SyntaxKind(175);
-    pub const BindingElement: SyntaxKind = SyntaxKind(176);
-    pub const ArrayLiteralExpression: SyntaxKind = SyntaxKind(177);
-    pub const ObjectLiteralExpression: SyntaxKind = SyntaxKind(178);
-    pub const PropertyAccessExpression: SyntaxKind = SyntaxKind(179);
-    pub const ElementAccessExpression: SyntaxKind = SyntaxKind(180);
-    pub const CallExpression: SyntaxKind = SyntaxKind(181);
-    pub const NewExpression: SyntaxKind = SyntaxKind(182);
-    pub const TaggedTemplateExpression: SyntaxKind = SyntaxKind(183);
-    pub const TypeAssertionExpression: SyntaxKind = SyntaxKind(184);
-    pub const ParenthesizedExpression: SyntaxKind = SyntaxKind(185);
-    pub const FunctionExpression: SyntaxKind = SyntaxKind(186);
-    pub const ArrowFunction: SyntaxKind = SyntaxKind(187);
-    pub const DeleteExpression: SyntaxKind = SyntaxKind(188);
-    pub const TypeOfExpression: SyntaxKind = SyntaxKind(189);
-    pub const VoidExpression: SyntaxKind = SyntaxKind(190);
-    pub const AwaitExpression: SyntaxKind = SyntaxKind(191);
-    pub const PrefixUnaryExpression: SyntaxKind = SyntaxKind(192);
-    pub const PostfixUnaryExpression: SyntaxKind = SyntaxKind(193);
-    pub const BinaryExpression: SyntaxKind = SyntaxKind(194);
-    pub const ConditionalExpression: SyntaxKind = SyntaxKind(195);
-    pub const TemplateExpression: SyntaxKind = SyntaxKind(196);
-    pub const YieldExpression: SyntaxKind = SyntaxKind(197);
-    pub const SpreadElement: SyntaxKind = SyntaxKind(198);
-    pub const ClassExpression: SyntaxKind = SyntaxKind(199);
-    pub const OmittedExpression: SyntaxKind = SyntaxKind(200);
-    pub const ExpressionWithTypeArguments: SyntaxKind = SyntaxKind(201);
-    pub const AsExpression: SyntaxKind = SyntaxKind(202);
-    pub const NonNullExpression: SyntaxKind = SyntaxKind(203);
-    pub const MetaProperty: SyntaxKind = SyntaxKind(204);
-    pub const TemplateSpan: SyntaxKind = SyntaxKind(205);
-    pub const SemicolonClassElement: SyntaxKind = SyntaxKind(206);
-    pub const Block: SyntaxKind = SyntaxKind(207);
-    pub const VariableStatement: SyntaxKind = SyntaxKind(208);
-    pub const EmptyStatement: SyntaxKind = SyntaxKind(209);
-    pub const ExpressionStatement: SyntaxKind = SyntaxKind(210);
-    pub const IfStatement: SyntaxKind = SyntaxKind(211);
-    pub const DoStatement: SyntaxKind = SyntaxKind(212);
-    pub const WhileStatement: SyntaxKind = SyntaxKind(213);
-    pub const ForStatement: SyntaxKind = SyntaxKind(214);
-    pub const ForInStatement: SyntaxKind = SyntaxKind(215);
-    pub const ForOfStatement: SyntaxKind = SyntaxKind(216);
-    pub const ContinueStatement: SyntaxKind = SyntaxKind(217);
-    pub const BreakStatement: SyntaxKind = SyntaxKind(218);
-    pub const ReturnStatement: SyntaxKind = SyntaxKind(219);
-    pub const WithStatement: SyntaxKind = SyntaxKind(220);
-    pub const SwitchStatement: SyntaxKind = SyntaxKind(221);
-    pub const LabeledStatement: SyntaxKind = SyntaxKind(222);
-    pub const ThrowStatement: SyntaxKind = SyntaxKind(223);
-    pub const TryStatement: SyntaxKind = SyntaxKind(224);
-    pub const DebuggerStatement: SyntaxKind = SyntaxKind(225);
-    pub const VariableDeclaration: SyntaxKind = SyntaxKind(226);
-    pub const VariableDeclarationList: SyntaxKind = SyntaxKind(227);
-    pub const FunctionDeclaration: SyntaxKind = SyntaxKind(228);
-    pub const ClassDeclaration: SyntaxKind = SyntaxKind(229);
-    pub const InterfaceDeclaration: SyntaxKind = SyntaxKind(230);
-    pub const TypeAliasDeclaration: SyntaxKind = SyntaxKind(231);
-    pub const traitDeclaration: SyntaxKind = SyntaxKind(232);
-    pub const ModuleDeclaration: SyntaxKind = SyntaxKind(233);
-    pub const ModuleBlock: SyntaxKind = SyntaxKind(234);
-    pub const CaseBlock: SyntaxKind = SyntaxKind(235);
-    pub const NamespaceExportDeclaration: SyntaxKind = SyntaxKind(236);
-    pub const ImportEqualsDeclaration: SyntaxKind = SyntaxKind(237);
-    pub const ImportDeclaration: SyntaxKind = SyntaxKind(238);
-    pub const ImportClause: SyntaxKind = SyntaxKind(239);
-    pub const NamespaceImport: SyntaxKind = SyntaxKind(240);
-    pub const NamedImports: SyntaxKind = SyntaxKind(241);
-    pub const ImportSpecifier: SyntaxKind = SyntaxKind(242);
-    pub const ExportAssignment: SyntaxKind = SyntaxKind(243);
-    pub const ExportDeclaration: SyntaxKind = SyntaxKind(244);
-    pub const NamedExports: SyntaxKind = SyntaxKind(245);
-    pub const ExportSpecifier: SyntaxKind = SyntaxKind(246);
-    pub const MissingDeclaration: SyntaxKind = SyntaxKind(247);
-    pub const ExternalModuleReference: SyntaxKind = SyntaxKind(248);
-    pub const JsxElement: SyntaxKind = SyntaxKind(249);
-    pub const JsxSelfClosingElement: SyntaxKind = SyntaxKind(250);
-    pub const JsxOpeningElement: SyntaxKind = SyntaxKind(251);
-    pub const JsxClosingElement: SyntaxKind = SyntaxKind(252);
-    pub const JsxAttribute: SyntaxKind = SyntaxKind(253);
-    pub const JsxAttributes: SyntaxKind = SyntaxKind(254);
-    pub const JsxSpreadAttribute: SyntaxKind = SyntaxKind(255);
-    pub const JsxExpression: SyntaxKind = SyntaxKind(256);
-    pub const CaseClause: SyntaxKind = SyntaxKind(257);
-    pub const DefaultClause: SyntaxKind = SyntaxKind(258);
-    pub const HeritageClause: SyntaxKind = SyntaxKind(259);
-    pub const CatchClause: SyntaxKind = SyntaxKind(260);
-    pub const PropertyAssignment: SyntaxKind = SyntaxKind(261);
-    pub const ShorthandPropertyAssignment: SyntaxKind = SyntaxKind(262);
-    pub const SpreadAssignment: SyntaxKind = SyntaxKind(263);
-    pub const traitMember: SyntaxKind = SyntaxKind(264);
-    pub const SourceFile: SyntaxKind = SyntaxKind(265);
-    pub const Bundle: SyntaxKind = SyntaxKind(266);
-    pub const JSDocTypeExpression: SyntaxKind = SyntaxKind(267);
-    pub const JSDocAllType: SyntaxKind = SyntaxKind(268);
-    pub const JSDocUnknownType: SyntaxKind = SyntaxKind(269);
-    pub const JSDocArrayType: SyntaxKind = SyntaxKind(270);
-    pub const JSDocUnionType: SyntaxKind = SyntaxKind(271);
-    pub const JSDocTupleType: SyntaxKind = SyntaxKind(272);
-    pub const JSDocNullableType: SyntaxKind = SyntaxKind(273);
-    pub const JSDocNonNullableType: SyntaxKind = SyntaxKind(274);
-    pub const JSDocRecordType: SyntaxKind = SyntaxKind(275);
-    pub const JSDocRecordMember: SyntaxKind = SyntaxKind(276);
-    pub const JSDocTypeReference: SyntaxKind = SyntaxKind(277);
-    pub const JSDocOptionalType: SyntaxKind = SyntaxKind(278);
-    pub const JSDocFunctionType: SyntaxKind = SyntaxKind(279);
-    pub const JSDocVariadicType: SyntaxKind = SyntaxKind(280);
-    pub const JSDocConstructorType: SyntaxKind = SyntaxKind(281);
-    pub const JSDocThisType: SyntaxKind = SyntaxKind(282);
-    pub const JSDocComment: SyntaxKind = SyntaxKind(283);
-    pub const JSDocTag: SyntaxKind = SyntaxKind(284);
-    pub const JSDocAugmentsTag: SyntaxKind = SyntaxKind(285);
-    pub const JSDocClassTag: SyntaxKind = SyntaxKind(286);
-    pub const JSDocParameterTag: SyntaxKind = SyntaxKind(287);
-    pub const JSDocReturnTag: SyntaxKind = SyntaxKind(288);
-    pub const JSDocTypeTag: SyntaxKind = SyntaxKind(289);
-    pub const JSDocTemplateTag: SyntaxKind = SyntaxKind(290);
-    pub const JSDocTypedefTag: SyntaxKind = SyntaxKind(291);
-    pub const JSDocPropertyTag: SyntaxKind = SyntaxKind(292);
-    pub const JSDocTypeLiteral: SyntaxKind = SyntaxKind(293);
-    pub const JSDocLiteralType: SyntaxKind = SyntaxKind(294);
-    pub const SyntaxList: SyntaxKind = SyntaxKind(295);
-    pub const NotEmittedStatement: SyntaxKind = SyntaxKind(296);
-    pub const PartiallyEmittedExpression: SyntaxKind = SyntaxKind(297);
-    pub const CommaListExpression: SyntaxKind = SyntaxKind(298);
-    pub const MergeDeclarationMarker: SyntaxKind = SyntaxKind(299);
-    pub const EndOfDeclarationMarker: SyntaxKind = SyntaxKind(300);
-    pub const Count: SyntaxKind = SyntaxKind(301);
-    pub const FirstAssignment: SyntaxKind = SyntaxKind(58);
-    pub const LastAssignment: SyntaxKind = SyntaxKind(70);
-    pub const FirstCompoundAssignment: SyntaxKind = SyntaxKind(59);
-    pub const LastCompoundAssignment: SyntaxKind = SyntaxKind(70);
-    pub const FirstReservedWord: SyntaxKind = SyntaxKind(72);
-    pub const LastReservedWord: SyntaxKind = SyntaxKind(107);
-    pub const FirstKeyword: SyntaxKind = SyntaxKind(72);
-    pub const LastKeyword: SyntaxKind = SyntaxKind(142);
-    pub const FirstFutureReservedWord: SyntaxKind = SyntaxKind(108);
-    pub const LastFutureReservedWord: SyntaxKind = SyntaxKind(116);
-    pub const FirstTypeNode: SyntaxKind = SyntaxKind(158);
-    pub const LastTypeNode: SyntaxKind = SyntaxKind(173);
-    pub const FirstPunctuation: SyntaxKind = SyntaxKind(17);
-    pub const LastPunctuation: SyntaxKind = SyntaxKind(70);
-    pub const FirstToken: SyntaxKind = SyntaxKind(0);
-    pub const LastToken: SyntaxKind = SyntaxKind(142);
-    pub const FirstTriviaToken: SyntaxKind = SyntaxKind(2);
-    pub const LastTriviaToken: SyntaxKind = SyntaxKind(7);
-    pub const FirstLiteralToken: SyntaxKind = SyntaxKind(8);
-    pub const LastLiteralToken: SyntaxKind = SyntaxKind(13);
-    pub const FirstTemplateToken: SyntaxKind = SyntaxKind(13);
-    pub const LastTemplateToken: SyntaxKind = SyntaxKind(16);
-    pub const FirstBinaryOperator: SyntaxKind = SyntaxKind(27);
-    pub const LastBinaryOperator: SyntaxKind = SyntaxKind(70);
-    pub const FirstNode: SyntaxKind = SyntaxKind(143);
-    pub const FirstJSDocNode: SyntaxKind = SyntaxKind(267);
-    pub const LastJSDocNode: SyntaxKind = SyntaxKind(294);
-    pub const FirstJSDocTagNode: SyntaxKind = SyntaxKind(284);
-    pub const LastJSDocTagNode: SyntaxKind = SyntaxKind(294);
+impl From<Box<NumericLiteral>> for Box<Expression> {
+    fn from(v: Box<NumericLiteral>) -> Box<Expression> {
+        Box::new(ObjectBox { object: chakracore::value::Object::clone(&*v.object())})
+    }
 }
+
+pub trait ParameterDeclaration: GetObject {}
+impl ParameterDeclaration for ObjectBox {}
+
+pub trait PrinterOptions : GetObject  {
+    fn set_newLine(&self, guard: &chakracore::context::ContextGuard, value: Option<NewLineKind>) {
+        let property = &chakracore::Property::new(guard, "newLine");
+        match value {
+            None => {
+                let jsv = &chakracore::value::undefined(guard);
+                self.object().set(guard, property, jsv);
+            },
+            Some(v) => {
+                let jsv = &chakracore::value::Number::new(guard, i32::from(v));
+                self.object().set(guard, property, jsv);
+            },
+        }
+    }
+}
+impl PrinterOptions for ObjectBox {}
+
+pub trait Printer : GetObject  {
+
+    // printNode(hint: EmitHint, node: Node, sourceFile: SourceFile): string;
+    fn printNode(&self, guard: &chakracore::context::ContextGuard, hint: &EmitHint, node: &Node, sourceFile: &SourceFile) -> String {
+        let this = self.object();
+        let function = this.get(guard, &chakracore::Property::new(guard, "printNode")).into_function().unwrap();
+        let rv = function.call_with_this(guard, this, &[
+            &chakracore::value::Number::new(guard, hint.id()).into(),
+            node.object(),
+            sourceFile.object(),
+        ]);
+        rv.unwrap().into_string().unwrap().value()
+    }
+}
+impl Printer for ObjectBox {}
+
+pub trait BinaryExpression: Expression + Declaration {}
+impl BinaryExpression for ObjectBox {}
+
+pub trait SyntaxKind: GetId {}
+impl SyntaxKind for IdBox {}
+
+pub trait SyntaxKind_Unknown: GetId { 
+    fn id(&self) -> i32 { 
+        SyntaxKindEnum::Unknown as i32
+    }
+}
+impl From<Box<SyntaxKind_Unknown>> for Box<SyntaxKind> {
+    fn from(v: Box<SyntaxKind_Unknown>) -> Box<SyntaxKind> {
+        Box::new(IdBox { id: SyntaxKind_Unknown::id(&*v) })
+    }
+}
+
+pub trait BinaryOperator: GetId {}
+impl BinaryOperator for IdBox {}
+
+pub trait SyntaxKind_LessThanEqualsToken {}
+impl GetId for SyntaxKind_LessThanEqualsToken {
+    fn id(&self) -> i32 { 
+        SyntaxKindEnum::LessThanEqualsToken as i32
+    }
+}
+impl SyntaxKind_LessThanEqualsToken for Enum {}
+pub fn SyntaxKind_LessThanEqualsToken_new() -> Box<SyntaxKind_LessThanEqualsToken> {
+    Box::new(Enum {})
+}
+
+pub trait SyntaxKind_MinusToken {}
+impl GetId for SyntaxKind_MinusToken {
+    fn id(&self) -> i32 { 
+        SyntaxKindEnum::MinusToken as i32
+    }
+}
+impl SyntaxKind_MinusToken for Enum {}
+pub fn SyntaxKind_MinusToken_new() -> Box<SyntaxKind_MinusToken> {
+    Box::new(Enum {})
+}
+impl From<Box<SyntaxKind_MinusToken>> for Box<SyntaxKind> {
+    fn from(v: Box<SyntaxKind_MinusToken>) -> Box<SyntaxKind> {
+        Box::new(IdBox { id: SyntaxKind_MinusToken::id(&*v) })
+    }
+}
+impl From<Box<SyntaxKind_MinusToken>> for Box<BinaryOperator> {
+    fn from(v: Box<SyntaxKind_MinusToken>) -> Box<BinaryOperator> {
+        Box::new(IdBox { id: SyntaxKind_MinusToken::id(&*v) })
+    }
+}
+
+pub trait SyntaxKind_AsteriskToken {}
+impl GetId for SyntaxKind_AsteriskToken {
+    fn id(&self) -> i32 { 
+        SyntaxKindEnum::AsteriskToken as i32
+    }
+}
+impl SyntaxKind_AsteriskToken for Enum {}
+pub fn SyntaxKind_AsteriskToken_new() -> Box<SyntaxKind_AsteriskToken> {
+    Box::new(Enum {})
+}
+impl From<Box<SyntaxKind_AsteriskToken>> for Box<SyntaxKind> {
+    fn from(v: Box<SyntaxKind_AsteriskToken>) -> Box<SyntaxKind> {
+        Box::new(IdBox { id: SyntaxKind_AsteriskToken::id(&*v) })
+    }
+}
+impl From<Box<SyntaxKind_AsteriskToken>> for Box<BinaryOperator> {
+    fn from(v: Box<SyntaxKind_AsteriskToken>) -> Box<BinaryOperator> {
+        Box::new(IdBox { id: SyntaxKind_AsteriskToken::id(&*v) })
+    }
+}
+
+pub trait SyntaxKind_ExportKeyword {}
+impl GetId for SyntaxKind_ExportKeyword {
+    fn id(&self) -> i32 { 
+        SyntaxKindEnum::ExportKeyword as i32
+    }
+}
+impl SyntaxKind_ExportKeyword for Enum {}
+pub fn SyntaxKind_ExportKeyword_new() -> Box<SyntaxKind_ExportKeyword> {
+    Box::new(Enum {})
+}
+impl From<Box<SyntaxKind_ExportKeyword>> for Box<SyntaxKind> {
+    fn from(v: Box<SyntaxKind_ExportKeyword>) -> Box<SyntaxKind> {
+        Box::new(IdBox { id: SyntaxKind_ExportKeyword::id(&*v) })
+    }
+}
+impl From<Box<SyntaxKind_ExportKeyword>> for Box<BinaryOperator> {
+    fn from(v: Box<SyntaxKind_ExportKeyword>) -> Box<BinaryOperator> {
+        Box::new(IdBox { id: SyntaxKind_ExportKeyword::id(&*v) })
+    }
+}
+
+pub trait SyntaxKind_NumberKeyword {}
+impl GetId for SyntaxKind_NumberKeyword {
+    fn id(&self) -> i32 { 
+        SyntaxKindEnum::NumberKeyword as i32
+    }
+}
+impl SyntaxKind_NumberKeyword for Enum {}
+pub fn SyntaxKind_NumberKeyword_new() -> Box<SyntaxKind_NumberKeyword> {
+    Box::new(Enum {})
+}
+impl From<Box<SyntaxKind_NumberKeyword>> for Box<SyntaxKind> {
+    fn from(v: Box<SyntaxKind_NumberKeyword>) -> Box<SyntaxKind> {
+        Box::new(IdBox { id: SyntaxKind_NumberKeyword::id(&*v) })
+    }
+}
+impl From<Box<SyntaxKind_NumberKeyword>> for Box<BinaryOperator> {
+    fn from(v: Box<SyntaxKind_NumberKeyword>) -> Box<BinaryOperator> {
+        Box::new(IdBox { id: SyntaxKind_NumberKeyword::id(&*v) })
+    }
+}
+
+impl From<Box<SyntaxKind_LessThanEqualsToken>> for Box<SyntaxKind> {
+    fn from(v: Box<SyntaxKind_LessThanEqualsToken>) -> Box<SyntaxKind> {
+        Box::new(IdBox { id: SyntaxKind_LessThanEqualsToken::id(&*v) })
+    }
+}
+impl From<Box<SyntaxKind_LessThanEqualsToken>> for Box<BinaryOperator> {
+    fn from(v: Box<SyntaxKind_LessThanEqualsToken>) -> Box<BinaryOperator> {
+        Box::new(IdBox { id: SyntaxKind_LessThanEqualsToken::id(&*v) })
+    }
+}
+
+pub enum SyntaxKindEnum {
+    Unknown = 0,
+    EndOfFileToken = 1,
+    SingleLineCommentTrivia = 2,
+    MultiLineCommentTrivia = 3,
+    NewLineTrivia = 4,
+    WhitespaceTrivia = 5,
+    ShebangTrivia = 6,
+    ConflictMarkerTrivia = 7,
+    NumericLiteral = 8,
+    StringLiteral = 9,
+    JsxText = 10,
+    JsxTextAllWhiteSpaces = 11,
+    RegularExpressionLiteral = 12,
+    NoSubstitutionTemplateLiteral = 13,
+    TemplateHead = 14,
+    TemplateMiddle = 15,
+    TemplateTail = 16,
+    OpenBraceToken = 17,
+    CloseBraceToken = 18,
+    OpenParenToken = 19,
+    CloseParenToken = 20,
+    OpenBracketToken = 21,
+    CloseBracketToken = 22,
+    DotToken = 23,
+    DotDotDotToken = 24,
+    SemicolonToken = 25,
+    CommaToken = 26,
+    LessThanToken = 27,
+    LessThanSlashToken = 28,
+    GreaterThanToken = 29,
+    LessThanEqualsToken = 30,
+    GreaterThanEqualsToken = 31,
+    EqualsEqualsToken = 32,
+    ExclamationEqualsToken = 33,
+    EqualsEqualsEqualsToken = 34,
+    ExclamationEqualsEqualsToken = 35,
+    EqualsGreaterThanToken = 36,
+    PlusToken = 37,
+    MinusToken = 38,
+    AsteriskToken = 39,
+    AsteriskAsteriskToken = 40,
+    SlashToken = 41,
+    PercentToken = 42,
+    PlusPlusToken = 43,
+    MinusMinusToken = 44,
+    LessThanLessThanToken = 45,
+    GreaterThanGreaterThanToken = 46,
+    GreaterThanGreaterThanGreaterThanToken = 47,
+    AmpersandToken = 48,
+    BarToken = 49,
+    CaretToken = 50,
+    ExclamationToken = 51,
+    TildeToken = 52,
+    AmpersandAmpersandToken = 53,
+    BarBarToken = 54,
+    QuestionToken = 55,
+    ColonToken = 56,
+    AtToken = 57,
+    EqualsToken = 58,
+    PlusEqualsToken = 59,
+    MinusEqualsToken = 60,
+    AsteriskEqualsToken = 61,
+    AsteriskAsteriskEqualsToken = 62,
+    SlashEqualsToken = 63,
+    PercentEqualsToken = 64,
+    LessThanLessThanEqualsToken = 65,
+    GreaterThanGreaterThanEqualsToken = 66,
+    GreaterThanGreaterThanGreaterThanEqualsToken = 67,
+    AmpersandEqualsToken = 68,
+    BarEqualsToken = 69,
+    CaretEqualsToken = 70,
+    Identifier = 71,
+    BreakKeyword = 72,
+    CaseKeyword = 73,
+    CatchKeyword = 74,
+    ClassKeyword = 75,
+    ConstKeyword = 76,
+    ContinueKeyword = 77,
+    DebuggerKeyword = 78,
+    DefaultKeyword = 79,
+    DeleteKeyword = 80,
+    DoKeyword = 81,
+    ElseKeyword = 82,
+    traitKeyword = 83,
+    ExportKeyword = 84,
+    ExtendsKeyword = 85,
+    FalseKeyword = 86,
+    FinallyKeyword = 87,
+    ForKeyword = 88,
+    FunctionKeyword = 89,
+    IfKeyword = 90,
+    ImportKeyword = 91,
+    InKeyword = 92,
+    InstanceOfKeyword = 93,
+    NewKeyword = 94,
+    NullKeyword = 95,
+    ReturnKeyword = 96,
+    SuperKeyword = 97,
+    SwitchKeyword = 98,
+    ThisKeyword = 99,
+    ThrowKeyword = 100,
+    TrueKeyword = 101,
+    TryKeyword = 102,
+    TypeOfKeyword = 103,
+    VarKeyword = 104,
+    VoidKeyword = 105,
+    WhileKeyword = 106,
+    WithKeyword = 107,
+    ImplementsKeyword = 108,
+    InterfaceKeyword = 109,
+    LetKeyword = 110,
+    PackageKeyword = 111,
+    PrivateKeyword = 112,
+    ProtectedKeyword = 113,
+    PublicKeyword = 114,
+    StaticKeyword = 115,
+    YieldKeyword = 116,
+    AbstractKeyword = 117,
+    AsKeyword = 118,
+    AnyKeyword = 119,
+    AsyncKeyword = 120,
+    AwaitKeyword = 121,
+    BooleanKeyword = 122,
+    ConstructorKeyword = 123,
+    DeclareKeyword = 124,
+    GetKeyword = 125,
+    IsKeyword = 126,
+    KeyOfKeyword = 127,
+    ModuleKeyword = 128,
+    NamespaceKeyword = 129,
+    NeverKeyword = 130,
+    ReadonlyKeyword = 131,
+    RequireKeyword = 132,
+    NumberKeyword = 133,
+    ObjectKeyword = 134,
+    SetKeyword = 135,
+    StringKeyword = 136,
+    SymbolKeyword = 137,
+    TypeKeyword = 138,
+    UndefinedKeyword = 139,
+    FromKeyword = 140,
+    GlobalKeyword = 141,
+    OfKeyword = 142,
+    QualifiedName = 143,
+    ComputedPropertyName = 144,
+    TypeParameter = 145,
+    Parameter = 146,
+    Decorator = 147,
+    PropertySignature = 148,
+    PropertyDeclaration = 149,
+    MethodSignature = 150,
+    MethodDeclaration = 151,
+    Constructor = 152,
+    GetAccessor = 153,
+    SetAccessor = 154,
+    CallSignature = 155,
+    ConstructSignature = 156,
+    IndexSignature = 157,
+    TypePredicate = 158,
+    TypeReference = 159,
+    FunctionType = 160,
+    ConstructorType = 161,
+    TypeQuery = 162,
+    TypeLiteral = 163,
+    ArrayType = 164,
+    TupleType = 165,
+    UnionType = 166,
+    IntersectionType = 167,
+    ParenthesizedType = 168,
+    ThisType = 169,
+    TypeOperator = 170,
+    IndexedAccessType = 171,
+    MappedType = 172,
+    LiteralType = 173,
+    ObjectBindingPattern = 174,
+    ArrayBindingPattern = 175,
+    BindingElement = 176,
+    ArrayLiteralExpression = 177,
+    ObjectLiteralExpression = 178,
+    PropertyAccessExpression = 179,
+    ElementAccessExpression = 180,
+    CallExpression = 181,
+    NewExpression = 182,
+    TaggedTemplateExpression = 183,
+    TypeAssertionExpression = 184,
+    ParenthesizedExpression = 185,
+    FunctionExpression = 186,
+    ArrowFunction = 187,
+    DeleteExpression = 188,
+    TypeOfExpression = 189,
+    VoidExpression = 190,
+    AwaitExpression = 191,
+    PrefixUnaryExpression = 192,
+    PostfixUnaryExpression = 193,
+    BinaryExpression = 194,
+    ConditionalExpression = 195,
+    TemplateExpression = 196,
+    YieldExpression = 197,
+    SpreadElement = 198,
+    ClassExpression = 199,
+    OmittedExpression = 200,
+    ExpressionWithTypeArguments = 201,
+    AsExpression = 202,
+    NonNullExpression = 203,
+    MetaProperty = 204,
+    TemplateSpan = 205,
+    SemicolonClassElement = 206,
+    Block = 207,
+    VariableStatement = 208,
+    EmptyStatement = 209,
+    ExpressionStatement = 210,
+    IfStatement = 211,
+    DoStatement = 212,
+    WhileStatement = 213,
+    ForStatement = 214,
+    ForInStatement = 215,
+    ForOfStatement = 216,
+    ContinueStatement = 217,
+    BreakStatement = 218,
+    ReturnStatement = 219,
+    WithStatement = 220,
+    SwitchStatement = 221,
+    LabeledStatement = 222,
+    ThrowStatement = 223,
+    TryStatement = 224,
+    DebuggerStatement = 225,
+    VariableDeclaration = 226,
+    VariableDeclarationList = 227,
+    FunctionDeclaration = 228,
+    ClassDeclaration = 229,
+    InterfaceDeclaration = 230,
+    TypeAliasDeclaration = 231,
+    traitDeclaration = 232,
+    ModuleDeclaration = 233,
+    ModuleBlock = 234,
+    CaseBlock = 235,
+    NamespaceExportDeclaration = 236,
+    ImportEqualsDeclaration = 237,
+    ImportDeclaration = 238,
+    ImportClause = 239,
+    NamespaceImport = 240,
+    NamedImports = 241,
+    ImportSpecifier = 242,
+    ExportAssignment = 243,
+    ExportDeclaration = 244,
+    NamedExports = 245,
+    ExportSpecifier = 246,
+    MissingDeclaration = 247,
+    ExternalModuleReference = 248,
+    JsxElement = 249,
+    JsxSelfClosingElement = 250,
+    JsxOpeningElement = 251,
+    JsxClosingElement = 252,
+    JsxAttribute = 253,
+    JsxAttributes = 254,
+    JsxSpreadAttribute = 255,
+    JsxExpression = 256,
+    CaseClause = 257,
+    DefaultClause = 258,
+    HeritageClause = 259,
+    CatchClause = 260,
+    PropertyAssignment = 261,
+    ShorthandPropertyAssignment = 262,
+    SpreadAssignment = 263,
+    traitMember = 264,
+    SourceFile = 265,
+    Bundle = 266,
+    JSDocTypeExpression = 267,
+    JSDocAllType = 268,
+    JSDocUnknownType = 269,
+    JSDocArrayType = 270,
+    JSDocUnionType = 271,
+    JSDocTupleType = 272,
+    JSDocNullableType = 273,
+    JSDocNonNullableType = 274,
+    JSDocRecordType = 275,
+    JSDocRecordMember = 276,
+    JSDocTypeReference = 277,
+    JSDocOptionalType = 278,
+    JSDocFunctionType = 279,
+    JSDocVariadicType = 280,
+    JSDocConstructorType = 281,
+    JSDocThisType = 282,
+    JSDocComment = 283,
+    JSDocTag = 284,
+    JSDocAugmentsTag = 285,
+    JSDocClassTag = 286,
+    JSDocParameterTag = 287,
+    JSDocReturnTag = 288,
+    JSDocTypeTag = 289,
+    JSDocTemplateTag = 290,
+    JSDocTypedefTag = 291,
+    JSDocPropertyTag = 292,
+    JSDocTypeLiteral = 293,
+    JSDocLiteralType = 294,
+    SyntaxList = 295,
+    NotEmittedStatement = 296,
+    PartiallyEmittedExpression = 297,
+    CommaListExpression = 298,
+    MergeDeclarationMarker = 299,
+    EndOfDeclarationMarker = 300,
+}
+
+pub trait SyntaxKindConst {
+    const Count: i32 = 301;
+    const FirstAssignment: i32 = 58;
+    const LastAssignment: i32 = 70;
+    const FirstCompoundAssignment: i32 = 59;
+    const LastCompoundAssignment: i32 = 70;
+    const FirstReservedWord: i32 = 72;
+    const LastReservedWord: i32 = 107;
+    const FirstKeyword: i32 = 72;
+    const LastKeyword: i32 = 142;
+    const FirstFutureReservedWord: i32 = 108;
+    const LastFutureReservedWord: i32 = 116;
+    const FirstTypeNode: i32 = 158;
+    const LastTypeNode: i32 = 173;
+    const FirstPunctuation: i32 = 17;
+    const LastPunctuation: i32 = 70;
+    const FirstToken: i32 = 0;
+    const LastToken: i32 = 142;
+    const FirstTriviaToken: i32 = 2;
+    const LastTriviaToken: i32 = 7;
+    const FirstLiteralToken: i32 = 8;
+    const LastLiteralToken: i32 = 13;
+    const FirstTemplateToken: i32 = 13;
+    const LastTemplateToken: i32 = 16;
+    const FirstBinaryOperator: i32 = 27;
+    const LastBinaryOperator: i32 = 70;
+    const FirstNode: i32 = 143;
+    const FirstJSDocNode: i32 = 267;
+    const LastJSDocNode: i32 = 294;
+    const FirstJSDocTagNode: i32 = 284;
+    const LastJSDocTagNode: i32 = 294;
+}
+
+
 pub struct NodeFlags(i32);
 impl NodeFlags {
     pub const None: i32 = 0;
@@ -529,30 +939,85 @@ impl JsxEmit {
     pub const React: i32 = 2;
     pub const ReactNative: i32 = 3;
 }
+
+#[derive(PartialEq,Eq)]
 pub struct NewLineKind(i32);
 impl NewLineKind {
-    pub const CarriageReturnLineFeed: i32 = 0;
-    pub const LineFeed: i32 = 1;
+    pub const CarriageReturnLineFeed: NewLineKind = NewLineKind(0);
+    pub const LineFeed: NewLineKind = NewLineKind(1);
 }
-pub struct ScriptKind(i32);
-impl ScriptKind {
-    pub const Unknown: i32 = 0;
-    pub const JS: i32 = 1;
-    pub const JSX: i32 = 2;
-    pub const TS: i32 = 3;
-    pub const TSX: i32 = 4;
-    pub const External: i32 = 5;
+impl From<NewLineKind> for i32 {
+    fn from(v: NewLineKind) -> i32 {
+        match v {
+            NewLineKind::CarriageReturnLineFeed => 0,
+            NewLineKind::LineFeed => 1,
+            _ => -1,
+        }
+    }
 }
-pub struct ScriptTarget(i32);
-impl ScriptTarget {
-    pub const ES3: i32 = 0;
-    pub const ES5: i32 = 1;
-    pub const ES2015: i32 = 2;
-    pub const ES2016: i32 = 3;
-    pub const ES2017: i32 = 4;
-    pub const ESNext: i32 = 5;
-    pub const Latest: i32 = 5;
+
+pub trait ScriptKind: GetId {}
+impl ScriptKind for IdBox {}
+
+enum ScriptKindEnum {
+    Unknown = 0,
+    JS = 1,
+    JSX = 2,
+    TS = 3,
+    TSX = 4,
+    External = 5,
 }
+
+pub trait ScriptKind_TS{
+}
+impl GetId for ScriptKind_TS {
+    fn id(&self) -> i32 { 
+        ScriptKindEnum::TS as i32
+    }
+}
+impl ScriptKind_TS for Enum {}
+pub fn ScriptKind_TS_new() -> Box<ScriptKind_TS> {
+    Box::new(Enum {})
+}
+impl From<Box<ScriptKind_TS>> for Box<ScriptKind> {
+    fn from(v: Box<ScriptKind_TS>) -> Box<ScriptKind> {
+        Box::new(IdBox { id: ScriptKind_TS::id(&*v) })
+    }
+}
+
+pub trait ScriptTarget: GetId {}
+impl ScriptTarget for IdBox {}
+
+pub enum ScriptTargetEnum {
+    ES3 = 0,
+    ES5 = 1,
+    ES2015 = 2,
+    ES2016 = 3,
+    ES2017 = 4,
+    ESNext = 5,
+}
+pub trait ScriptTargetConst {
+    const Latest: i32 = 5;
+}
+
+pub trait ScriptTarget_Latest {
+}
+impl GetId for ScriptTarget_Latest {
+    fn id(&self) -> i32 { 
+        // ScriptTargetConst::Latest
+        5
+    }
+}
+impl ScriptTarget_Latest for Enum {}
+pub fn ScriptTarget_Latest_new() -> Box<ScriptTarget_Latest> {
+    Box::new(Enum {})
+}
+impl From<Box<ScriptTarget_Latest>> for Box<ScriptTarget> {
+    fn from(v: Box<ScriptTarget_Latest>) -> Box<ScriptTarget> {
+        Box::new(IdBox { id: ScriptTarget_Latest::id(&*v) })
+    }
+}
+
 pub struct LanguageVariant(i32);
 impl LanguageVariant {
     pub const Standard: i32 = 0;
@@ -606,10 +1071,134 @@ impl EmitFlags {
     pub const NoAsciiEscaping: i32 = 16777216;
 }
 
-pub struct EmitHint(i32);
-impl EmitHint {
-    pub const SourceFile: i32 = 0;
-    pub const Expression: i32 = 1;
-    pub const IdentifierName: i32 = 2;
-    pub const Unspecified: i32 = 3;
+pub trait EmitHint: GetId {}
+impl EmitHint for IdBox {}
+
+pub enum EmitHintEnum {
+    SourceFile = 0,
+    Expression = 1,
+    IdentifierName = 2,
+    MappedTypeParameter = 3,
+    Unspecified = 4,
+}
+
+pub trait EmitHint_Unspecified {}
+impl GetId for EmitHint_Unspecified {
+    fn id(&self) -> i32 { 
+        EmitHintEnum::Unspecified as i32
+    }
+}
+impl EmitHint_Unspecified for Enum {}
+pub fn EmitHint_Unspecified_new() -> Box<EmitHint_Unspecified> {
+    Box::new(Enum {})
+}
+impl From<Box<EmitHint_Unspecified>> for Box<EmitHint> {
+    fn from(v: Box<EmitHint_Unspecified>) -> Box<EmitHint> {
+        Box::new(IdBox { id: EmitHint_Unspecified::id(&*v) })
+    }
+}
+
+pub trait Statement: GetObject {}
+impl Statement for ObjectBox {}
+
+pub trait IfStatement: GetObject {}
+impl IfStatement for ObjectBox {}
+
+pub trait Block: GetObject {}
+impl Block for ObjectBox {}
+
+pub trait ReturnStatement: GetObject {}
+impl ReturnStatement for ObjectBox {}
+
+pub trait TypeNode: GetObject {}
+impl TypeNode for ObjectBox {}
+
+pub trait CallExpression: GetObject {}
+impl CallExpression for ObjectBox {}
+
+pub trait KeywordTypeNode: GetObject {}
+impl KeywordTypeNode for ObjectBox {}
+
+pub trait Token: GetObject {}
+impl Token for ObjectBox {}
+
+pub trait FunctionDeclaration: GetObject {}
+impl FunctionDeclaration for ObjectBox {}
+
+pub trait TypeParameterDeclaration: GetObject {}
+impl TypeParameterDeclaration for ObjectBox {}
+
+pub trait AsteriskToken: GetObject {}
+impl AsteriskToken for ObjectBox {}
+
+pub trait Modifier: GetObject {}
+impl Modifier for ObjectBox {}
+
+pub trait Decorator: GetObject {}
+impl Decorator for ObjectBox {}
+
+impl From<Box<Identifier>> for Box<Node> {
+    fn from(v: Box<Identifier>) -> Box<Node> {
+        Box::new(ObjectBox { object: chakracore::value::Object::clone(&*v.object())})
+    }
+}
+
+impl From<Box<Identifier>> for Box<Expression> {
+    fn from(v: Box<Identifier>) -> Box<Expression> {
+        Box::new(ObjectBox { object: chakracore::value::Object::clone(&*v.object())})
+    }
+}
+
+impl From<Box<BinaryExpression>> for Box<Node> {
+    fn from(v: Box<BinaryExpression>) -> Box<Node> {
+        Box::new(ObjectBox { object: chakracore::value::Object::clone(&*v.object())})
+    }
+}
+
+impl From<Box<FunctionDeclaration>> for Box<Node> {
+    fn from(v: Box<FunctionDeclaration>) -> Box<Node> {
+        Box::new(ObjectBox { object: chakracore::value::Object::clone(&*v.object())})
+    }
+}
+
+impl From<Box<Block>> for Box<Node> {
+    fn from(v: Box<Block>) -> Box<Node> {
+        Box::new(ObjectBox { object: chakracore::value::Object::clone(&*v.object())})
+    }
+}
+
+impl From<Box<Block>> for Box<Statement> {
+    fn from(v: Box<Block>) -> Box<Statement> {
+        Box::new(ObjectBox { object: chakracore::value::Object::clone(&*v.object())})
+    }
+}
+
+impl From<Box<IfStatement>> for Box<Statement> {
+    fn from(v: Box<IfStatement>) -> Box<Statement> {
+        Box::new(ObjectBox { object: chakracore::value::Object::clone(&*v.object())})
+    }
+}
+
+impl From<Box<ReturnStatement>> for Box<Statement> {
+    fn from(v: Box<ReturnStatement>) -> Box<Statement> {
+        Box::new(ObjectBox { object: chakracore::value::Object::clone(&*v.object())})
+    }
+}
+
+impl From<Box<CallExpression>> for Box<Expression> {
+    fn from(v: Box<CallExpression>) -> Box<Expression> {
+        Box::new(ObjectBox { object: chakracore::value::Object::clone(&*v.object())})
+    }
+}
+
+impl From<Box<BinaryExpression>> for Box<Expression> {
+    fn from(v: Box<BinaryExpression>) -> Box<Expression> {
+        Box::new(ObjectBox { object: chakracore::value::Object::clone(&*v.object())})
+    }
+}
+
+impl From<Box<KeywordTypeNode>> for Box<TypeNode> {
+    fn from(v: Box<KeywordTypeNode>) -> Box<TypeNode> {
+        Box::new(ObjectBox { object: chakracore::value::Object::clone(&*v.object())})
+    }
 }
