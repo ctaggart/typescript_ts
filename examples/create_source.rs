@@ -6,69 +6,65 @@
 
 extern crate typescript_ts as ts;
 extern crate chakracore;
-use chakracore::context::ContextGuard;
 
-fn makeFactorialFunction(guard: &ContextGuard, ts: &ts::TsMod) -> Box<ts::Node> {
-
-    let functionName = ts.createIdentifier(guard, "factorial");
-    let functionName2 = ts.createIdentifier(guard, "factorial"); // TODO problem with Box::from
-    let paramName = ts.createIdentifier(guard, "n");
-    let parameter = ts.createParameter(guard,
+fn makeFactorialFunction<'a>(ts: &'a ts::TsMod<'a>) -> ts::FunctionDeclaration<'a> {
+    let functionName = ts.createIdentifier("factorial");
+    // let functionName2 = ts.createIdentifier("factorial"); // TODO problem with Box::from
+    let paramName = ts.createIdentifier("n");
+    let parameter = ts.createParameter(
         // /*decorators*/ None,
         // /*modifiers*/ None,
         // /*dotDotDotToken*/ None,
-        &*paramName);
+        &paramName);
 
-    let condition = ts.createBinary(guard,
-        &*paramName.as_Expression(),
+    let condition = ts.createBinary(
+        &paramName.as_Expression(),
         // &*operator,
-        &*Box::from(ts::SyntaxKind_LessThanEqualsToken_new()),
-        &*Box::from(ts.createLiteral_number(guard, 1)));
+        ts::SyntaxKind::LessThanEqualsToken,
+        &ts.createLiteral_number(1).as_Expression());
 
-    let ifBody = ts.createBlock(guard,
-        &[&*Box::from(ts.createReturn(guard, &*Box::from(ts.createLiteral_number(guard, 1))))],
+    let ifBody = ts.createBlock(
+        &[&ts.createReturn(&ts.createLiteral_number(1).as_Expression()).as_Statement()],
         /*multiline*/ true);
-    let decrementedArg = ts.createBinary(guard, &*paramName.as_Expression(), &*Box::from(ts::SyntaxKind_MinusToken_new()), &*Box::from(ts.createLiteral_number(guard, 1)));
-    let recurse = ts.createBinary(guard,
-        &*Box::from(paramName),
-        &*Box::from(ts::SyntaxKind_AsteriskToken_new()),
-        &*Box::from(ts.createCall(guard, &*Box::from(functionName), /*typeArgs*/ None, &[&*Box::from(decrementedArg)])));
+    let decrementedArg = ts.createBinary(&paramName.as_Expression(), ts::SyntaxKind::MinusToken, &ts.createLiteral_number(1).as_Expression());
+    let recurse = ts.createBinary(
+        &paramName.as_Expression(),
+        ts::SyntaxKind::AsteriskToken,
+        &ts.createCall(&functionName.as_Expression(), /*typeArgs*/ None, &[&decrementedArg.as_Expression()]).as_Expression());
+    let ifStmt = ts.createIf(&condition.as_Expression(), &ifBody.as_Statement());
+    let rtnStmt = ts.createReturn(&recurse.as_Expression());
     let statements = &[
-        &*Box::from(ts.createIf(guard, &*Box::from(condition), &*Box::from(ifBody))),
-        &*Box::from(ts.createReturn(guard,
-            &*Box::from(recurse)
-        )),
+        &ifStmt.as_Statement(),
+        &rtnStmt.as_Statement(),
     ];
 
-    let fnd = ts.createFunctionDeclaration(guard,
+    ts.createFunctionDeclaration(
         /*decorators*/ None,
-        /*modifiers*/Some(&[&*Box::from(ts.createToken(guard, &*Box::from(ts::SyntaxKind_ExportKeyword_new())))]),
+        /*modifiers*/Some(&[&ts.createToken(ts::SyntaxKind::ExportKeyword)]),
         /*asteriskToken*/ None,
-        Some(&*functionName2),
+        Some(&functionName),
         /*typeParameters*/ None,
-        &[&*parameter],
-        /*returnType*/ Some(&*Box::from(ts.createKeywordTypeNode(guard, &*Box::from(ts::SyntaxKind_NumberKeyword_new())))),
-        Some(&*ts.createBlock(guard, statements, /*multiline*/ true)),
-    );
-
-    Box::from(fnd)
+        &[&parameter],
+        /*returnType*/ Some(&ts.createKeywordTypeNode(ts::SyntaxKind::NumberKeyword).as_TypeNode()),
+        Some(&ts.createBlock(statements, /*multiline*/ true)),
+    )
+    // fd.as_Node() // TODO fix lifetimes
 }
 
 fn main() {
     let (_runtime, context) = ts::new_context();
     let guard = ts::new_guard(&context);
-    let js = ts::read_js();
-    ts::eval_js(&guard, &js);
-    let ts = ts::ts(&guard);
+    let js = ts::Js::new(&guard);
+    let ts = js.ts();
 
-    let resultFile = ts.createSourceFile(&guard, "someFileName.ts", "", &*Box::from(ts::ScriptTarget_Latest_new()), /*setParentNodes*/ false, &*Box::from(ts::ScriptKind_TS_new()));
+    let resultFile = ts.createSourceFile("someFileName.ts", "", ts::ScriptTarget::ESNext, /*setParentNodes*/ false, ts::ScriptKind::TS);
 
-    let printerOptions: Box<ts::PrinterOptions> = Box::new(ts::ObjectBox::new(&guard));
-    printerOptions.set_newLine(&guard, Some(ts::NewLineKind::LineFeed));
-    let printer = ts.createPrinter(&guard, &*printerOptions);
+    let printerOptions = ts::PrinterOptions::new(&guard, chakracore::value::Object::new(&guard));
+    printerOptions.set_newLine(Some(ts::NewLineKind::LineFeed));
+    let printer = ts.createPrinter(&printerOptions);
     
-    let node = &*makeFactorialFunction(&guard, &*ts);
-    let result = printer.printNode(&guard, &*Box::from(ts::EmitHint_Unspecified_new()), node, &*resultFile);
+    let node = makeFactorialFunction(&ts);
+    let result = printer.printNode(ts::EmitHint::Unspecified, &node.as_Node(), &resultFile);
 
     println!("{}", result);
 }
