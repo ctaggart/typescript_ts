@@ -45,9 +45,18 @@ pub fn eval_js(guard: &chakracore::context::ContextGuard, js: &str) {
     chakracore::script::eval(guard, js).expect("invalid JavaScript code");
 }
 
+pub trait GetObject<'a> {
+    fn guard(&self) -> &'a chakracore::context::ContextGuard<'a>;
+    fn object(&self) -> &chakracore::value::Object;
+}
+
 pub struct TsMod<'a> {
     guard: &'a chakracore::context::ContextGuard<'a>,
     object: chakracore::value::Object
+}
+impl<'a> GetObject<'a> for TsMod<'a> {
+    fn guard(&self) -> &'a chakracore::context::ContextGuard<'a> { self.guard }
+    fn object(&self) -> &chakracore::value::Object { &self.object }
 }
 
 impl<'a> TsMod<'a> {
@@ -72,171 +81,184 @@ impl<'a> TsMod<'a> {
         Node::new(self.guard, object)
     }
 
-//    // function createParameter(decorators: ReadonlyArray<Decorator> | undefined, modifiers: ReadonlyArray<Modifier> | undefined, dotDotDotToken: DotDotDotToken | undefined, name: string | BindingName, questionToken?: QuestionToken, type?: TypeNode, initializer?: Expression): ParameterDeclaration;
-//    fn createParameter(&self, name: &Identifier) -> Box<ParameterDeclaration> {
-//        let function = self.object.get(self.guard, &chakracore::Property::new(self.guard, "createParameter")).into_function().unwrap();
-//        let rv = function.call_with_this(self.guard, self.object, &[
-//            &chakracore::value::undefined(self.guard),
-//            &chakracore::value::undefined(self.guard),
-//            &chakracore::value::undefined(self.guard),
-//            name.object(),
-//        ]);
-//        Box::new(ObjectBox { object: rv.unwrap().into_object().unwrap() })
-//    }
-//
-//    // function createIdentifier(text: string): Identifier;
-//    fn createIdentifier(&self, text: &str) -> Box<Identifier> {
-//        let function = self.object.get(self.guard, &chakracore::Property::new(self.guard, "createIdentifier")).into_function().unwrap();
-//        let rv = function.call_with_this(self.guard, self.object, &[
-//            &chakracore::value::String::new(self.guard, text).into(),
-//        ]);
-//        Box::new(ObjectBox { object: rv.unwrap().into_object().unwrap() })
-//    }
-//
-//    // function createLiteral(value: number): NumericLiteral;
-//    fn createLiteral_number(&self, value: i32) -> Box<NumericLiteral> {
-//        let function = self.object.get(self.guard, &chakracore::Property::new(self.guard, "createLiteral")).into_function().unwrap();
-//        let rv = function.call_with_this(self.guard, self.object, &[
-//            &chakracore::value::Number::new(self.guard, value).into(),
-//        ]);
-//        Box::new(ObjectBox { object: rv.unwrap().into_object().unwrap() })
-//    }
-//
-//    // function createBinary(left: Expression, operator: BinaryOperator | BinaryOperatorToken, right: Expression): BinaryExpression;
-//    fn createBinary(&self, left: &Expression, operator: &BinaryOperator, right: &Expression) -> Box<BinaryExpression> {
-//        let function = self.object.get(self.guard, &chakracore::Property::new(self.guard, "createBinary")).into_function().unwrap();
-//        let rv = function.call_with_this(self.guard, self.object, &[
-//            left.object(),
-//            &chakracore::value::Number::new(self.guard, operator.id()).into(),
-//            right.object(),
-//        ]);
-//        Box::new(ObjectBox { object: rv.unwrap().into_object().unwrap() })
-//    }
-//
-//    // function createBlock(statements: ReadonlyArray<Statement>, multiLine?: boolean): Block;
-//    fn createBlock(&self, statements: &[&Statement], multiLine: bool ) -> Box<Block> {
-//        let function = self.object.get(self.guard, &chakracore::Property::new(self.guard, "createBlock")).into_function().unwrap();
-//
-//        let statements_length = statements.len() as u32;
-//        let statements_array = chakracore::value::Array::new(self.guard, statements_length);
-//        for i in 0..statements_length {
-//            statements_array.set_index(guard, i, statements[i as usize].object());
-//        }
-//
-//        let rv = function.call_with_this(self.guard, self.object, &[
-//            &statements_array,
-//            &chakracore::value::Boolean::new(self.guard, multiLine).into(),
-//        ]);
-//        Box::new(ObjectBox { object: rv.unwrap().into_object().unwrap() })
-//    }
-//
-//    // function createSourceFile(fileName: string, sourceText: string, languageVersion: ScriptTarget, setParentNodes?: boolean, scriptKind?: ScriptKind): SourceFile;
-//    // ts.createSourceFile("someFileName.ts", "", ts::ScriptTarget::Latest, /*setParentNodes*/ false, ts::ScriptKind::TS);
-//    fn createSourceFile(&self, fileName: &str, sourceText: &str, languageVersion: &ScriptTarget, setParentNodes: bool, scriptKind: &ScriptKind) -> Box<SourceFile> {
-//        let function = self.object.get(self.guard, &chakracore::Property::new(self.guard, "createSourceFile")).into_function().unwrap();
-//        let rv = function.call_with_this(self.guard, self.object, &[
-//            &chakracore::value::String::new(self.guard, fileName).into(),
-//            &chakracore::value::String::new(self.guard, sourceText).into(),
-//            &chakracore::value::Number::new(self.guard, languageVersion.id()).into(),
-//            &chakracore::value::Boolean::new(self.guard, setParentNodes).into(),
-//            &chakracore::value::Number::new(self.guard, scriptKind.id()).into(),
-//        ]);
-//        Box::new(ObjectBox { object: rv.unwrap().into_object().unwrap() })
-//    }
-//
-//    // function createPrinter(printerOptions?: PrinterOptions, handlers?: PrintHandlers): Printer;
-//    fn createPrinter(&self, printerOptions: &PrinterOptions) -> Box<Printer> {
-//        let function = self.object.get(self.guard, &chakracore::Property::new(self.guard, "createPrinter")).into_function().unwrap();
-//        let rv = function.call_with_this(self.guard, self.object, &[
-//            printerOptions.object()
-//        ]);
-//        Box::new(ObjectBox { object: rv.unwrap().into_object().unwrap() })
-//    }
-//
-//    // function createReturn(expression?: Expression): ReturnStatement;
-//    fn createReturn(&self, expression: &Expression) -> Box<ReturnStatement> {
-//        let function = self.object.get(self.guard, &chakracore::Property::new(self.guard, "createReturn")).into_function().unwrap();
-//        let rv = function.call_with_this(self.guard, self.object, &[
-//            expression.object(),
-//        ]);
-//        Box::new(ObjectBox { object: rv.unwrap().into_object().unwrap() })
-//    }
-//
-//    // function createCall(expression: Expression, typeArguments: ReadonlyArray<TypeNode> | undefined, argumentsArray: ReadonlyArray<Expression>): CallExpression;
-//    fn createCall(&self, expression: &Expression, typeArguments: Option<&[&TypeNode]>, argumentsArray: &[&Expression]) -> Box<CallExpression> {
-//        let function = self.object.get(self.guard, &chakracore::Property::new(self.guard, "createCall")).into_function().unwrap();
-//
-//        let argumentsArray_length = argumentsArray.len() as u32;
-//        let argumentsArray_array = chakracore::value::Array::new(self.guard, argumentsArray_length);
-//        for i in 0..argumentsArray_length {
-//            argumentsArray_array.set_index(guard, i, argumentsArray[i as usize].object());
-//        }
-//
-//        let rv = function.call_with_this(self.guard, self.object, &[
-//            expression.object(),
-//            &chakracore::value::undefined(self.guard), // TODO typeArguments
-//            &argumentsArray_array,
-//        ]);
-//        Box::new(ObjectBox { object: rv.unwrap().into_object().unwrap() })
-//    }
-//
-//    // function createIf(expression: Expression, thenStatement: Statement, elseStatement?: Statement): IfStatement;
-//    fn createIf(&self, expression: &Expression, thenStatement: &Statement) -> Box<IfStatement> {
-//        let function = self.object.get(self.guard, &chakracore::Property::new(self.guard, "createIf")).into_function().unwrap();
-//        let rv = function.call_with_this(self.guard, self.object, &[
-//            expression.object(),
-//            thenStatement.object(),
-//        ]);
-//        Box::new(ObjectBox { object: rv.unwrap().into_object().unwrap() })
-//    }
-//
-//    // function createKeywordTypeNode(kind: KeywordTypeNode["kind"]): KeywordTypeNode;
-//    fn createKeywordTypeNode(&self, kind: &SyntaxKind) -> Box<KeywordTypeNode> {
-//        let function = self.object.get(self.guard, &chakracore::Property::new(self.guard, "createKeywordTypeNode")).into_function().unwrap();
-//        let rv = function.call_with_this(self.guard, self.object, &[
-//            &chakracore::value::Number::new(self.guard, kind.id()).into(),
-//        ]);
-//        Box::new(ObjectBox { object: rv.unwrap().into_object().unwrap() })
-//    }
-//
-//    // function createToken<TKind extends SyntaxKind>(token: TKind): Token<TKind>;
-//    fn createToken(&self, token: &SyntaxKind) -> Box<Token> {
-//        let function = self.object.get(self.guard, &chakracore::Property::new(self.guard, "createToken")).into_function().unwrap();
-//        let rv = function.call_with_this(self.guard, self.object, &[
-//            &chakracore::value::Number::new(self.guard, token.id()).into(),
-//        ]);
-//        Box::new(ObjectBox { object: rv.unwrap().into_object().unwrap() })
-//    }
-//
-//    // function createFunctionDeclaration(decorators: ReadonlyArray<Decorator> | undefined, modifiers: ReadonlyArray<Modifier> | undefined, asteriskToken: AsteriskToken | undefined, name: string | Identifier | undefined, typeParameters: ReadonlyArray<TypeParameterDeclaration> | undefined, parameters: ReadonlyArray<ParameterDeclaration>, type: TypeNode | undefined, body: Block | undefined): FunctionDeclaration;
-//    fn createFunctionDeclaration(&self, decorators: Option<&[&Decorator]>, modifiers: Option<&[&Token]>, asteriskToken: Option<&AsteriskToken>, name: Option<&Identifier>, typeParameters: Option<&[&TypeParameterDeclaration]>, parameters: &[&ParameterDeclaration], type_: Option<&TypeNode>, body: Option<&Block>) -> Box<FunctionDeclaration> {
-//        let function = self.object.get(self.guard, &chakracore::Property::new(self.guard, "createFunctionDeclaration")).into_function().unwrap();
-//
-//        let modifiers = modifiers.unwrap();
-//        let modifiers_length = modifiers.len() as u32;
-//        let modifiers_array = chakracore::value::Array::new(self.guard, modifiers_length);
-//        for i in 0..modifiers_length {
-//            modifiers_array.set_index(guard, i, modifiers[i as usize].object());
-//        }
-//
-//        let parameters_length = parameters.len() as u32;
-//        let parameters_array = chakracore::value::Array::new(self.guard, parameters_length);
-//        for i in 0..parameters_length {
-//            parameters_array.set_index(guard, i, parameters[i as usize].object());
-//        }
-//
-//        let rv = function.call_with_this(self.guard, self.object, &[
-//            &chakracore::value::undefined(self.guard), // TODO decorators
-//            &modifiers_array,
-//            &chakracore::value::undefined(self.guard), // TODO asteriskToken
-//            name.unwrap().object(),
-//            &chakracore::value::undefined(self.guard), // TODO typeParameters
-//            &parameters_array,
-//            type_.unwrap().object(),
-//            body.unwrap().object(),
-//        ]);
-//        Box::new(ObjectBox { object: rv.unwrap().into_object().unwrap() })
-//    }
+   // function createParameter(decorators: ReadonlyArray<Decorator> | undefined, modifiers: ReadonlyArray<Modifier> | undefined, dotDotDotToken: DotDotDotToken | undefined, name: string | BindingName, questionToken?: QuestionToken, type?: TypeNode, initializer?: Expression): ParameterDeclaration;
+   fn createParameter(&self, name: &Identifier) -> ParameterDeclaration {
+       let function = self.object.get(self.guard, &chakracore::Property::new(self.guard, "createParameter")).into_function().unwrap();
+       let rv = function.call_with_this(self.guard, self.object, &[
+           &chakracore::value::undefined(self.guard),
+           &chakracore::value::undefined(self.guard),
+           &chakracore::value::undefined(self.guard),
+           name.object(),
+       ]);
+       let object = rv.unwrap().into_object().unwrap();
+       ParameterDeclaration::new(self.guard, object)
+   }
+
+   // function createIdentifier(text: string): Identifier;
+   fn createIdentifier(&self, text: &str) -> Identifier {
+       let function = self.object.get(self.guard, &chakracore::Property::new(self.guard, "createIdentifier")).into_function().unwrap();
+       let rv = function.call_with_this(self.guard, self.object, &[
+           &chakracore::value::String::new(self.guard, text).into(),
+       ]);
+       let object = rv.unwrap().into_object().unwrap();
+       Identifier::new(self.guard, object)
+   }
+
+   // function createLiteral(value: number): NumericLiteral;
+   fn createLiteral_number(&self, value: i32) -> NumericLiteral {
+       let function = self.object.get(self.guard, &chakracore::Property::new(self.guard, "createLiteral")).into_function().unwrap();
+       let rv = function.call_with_this(self.guard, self.object, &[
+           &chakracore::value::Number::new(self.guard, value).into(),
+       ]);
+       let object = rv.unwrap().into_object().unwrap();
+       NumericLiteral::new(self.guard, object)
+   }
+
+   // function createBinary(left: Expression, operator: BinaryOperator | BinaryOperatorToken, right: Expression): BinaryExpression;
+   fn createBinary(&self, left: &Expression, operator: &BinaryOperator, right: &Expression) -> BinaryExpression {
+       let function = self.object.get(self.guard, &chakracore::Property::new(self.guard, "createBinary")).into_function().unwrap();
+       let rv = function.call_with_this(self.guard, self.object, &[
+           left.object(),
+           &chakracore::value::Number::new(self.guard, operator.id()).into(),
+           right.object(),
+       ]);
+       let object = rv.unwrap().into_object().unwrap();
+       BinaryExpression::new(self.guard, object)
+   }
+
+   // function createBlock(statements: ReadonlyArray<Statement>, multiLine?: boolean): Block;
+   fn createBlock(&self, statements: &[&Statement], multiLine: bool ) -> Block {
+       let function = self.object.get(self.guard, &chakracore::Property::new(self.guard, "createBlock")).into_function().unwrap();
+
+       let statements_length = statements.len() as u32;
+       let statements_array = chakracore::value::Array::new(self.guard, statements_length);
+       for i in 0..statements_length {
+           statements_array.set_index(guard, i, statements[i as usize].object());
+       }
+
+       let rv = function.call_with_this(self.guard, self.object, &[
+           &statements_array,
+           &chakracore::value::Boolean::new(self.guard, multiLine).into(),
+       ]);
+       let object = rv.unwrap().into_object().unwrap();
+       Block::new(self.guard, object)
+   }
+
+   // function createSourceFile(fileName: string, sourceText: string, languageVersion: ScriptTarget, setParentNodes?: boolean, scriptKind?: ScriptKind): SourceFile;
+   // ts.createSourceFile("someFileName.ts", "", ts::ScriptTarget::Latest, /*setParentNodes*/ false, ts::ScriptKind::TS);
+   fn createSourceFile(&self, fileName: &str, sourceText: &str, languageVersion: &ScriptTarget, setParentNodes: bool, scriptKind: &ScriptKind) -> SourceFile {
+       let function = self.object.get(self.guard, &chakracore::Property::new(self.guard, "createSourceFile")).into_function().unwrap();
+       let rv = function.call_with_this(self.guard, self.object, &[
+           &chakracore::value::String::new(self.guard, fileName).into(),
+           &chakracore::value::String::new(self.guard, sourceText).into(),
+           &chakracore::value::Number::new(self.guard, languageVersion.id()).into(),
+           &chakracore::value::Boolean::new(self.guard, setParentNodes).into(),
+           &chakracore::value::Number::new(self.guard, scriptKind.id()).into(),
+       ]);
+       let object = rv.unwrap().into_object().unwrap();
+       SourceFile::new(self.guard, object)
+   }
+
+   // function createPrinter(printerOptions?: PrinterOptions, handlers?: PrintHandlers): Printer;
+   fn createPrinter(&self, printerOptions: &PrinterOptions) -> Printer {
+       let function = self.object.get(self.guard, &chakracore::Property::new(self.guard, "createPrinter")).into_function().unwrap();
+       let rv = function.call_with_this(self.guard, self.object, &[
+           printerOptions.object()
+       ]);
+       let object = rv.unwrap().into_object().unwrap();
+       Printer::new(self.guard, object)
+   }
+
+   // function createReturn(expression?: Expression): ReturnStatement;
+   fn createReturn(&self, expression: &Expression) -> ReturnStatement {
+       let function = self.object.get(self.guard, &chakracore::Property::new(self.guard, "createReturn")).into_function().unwrap();
+       let rv = function.call_with_this(self.guard, self.object, &[
+           expression.object(),
+       ]);
+       let object = rv.unwrap().into_object().unwrap();
+       ReturnStatement::new(self.guard, object)
+   }
+
+   // function createCall(expression: Expression, typeArguments: ReadonlyArray<TypeNode> | undefined, argumentsArray: ReadonlyArray<Expression>): CallExpression;
+   fn createCall(&self, expression: &Expression, typeArguments: Option<&[&TypeNode]>, argumentsArray: &[&Expression]) -> CallExpression {
+       let function = self.object.get(self.guard, &chakracore::Property::new(self.guard, "createCall")).into_function().unwrap();
+
+       let argumentsArray_length = argumentsArray.len() as u32;
+       let argumentsArray_array = chakracore::value::Array::new(self.guard, argumentsArray_length);
+       for i in 0..argumentsArray_length {
+           argumentsArray_array.set_index(guard, i, argumentsArray[i as usize].object());
+       }
+
+       let rv = function.call_with_this(self.guard, self.object, &[
+           expression.object(),
+           &chakracore::value::undefined(self.guard), // TODO typeArguments
+           &argumentsArray_array,
+       ]);
+       let object = rv.unwrap().into_object().unwrap();
+       CallExpression::new(self.guard, object)
+   }
+
+   // function createIf(expression: Expression, thenStatement: Statement, elseStatement?: Statement): IfStatement;
+   fn createIf(&self, expression: &Expression, thenStatement: &Statement) -> IfStatement {
+       let function = self.object.get(self.guard, &chakracore::Property::new(self.guard, "createIf")).into_function().unwrap();
+       let rv = function.call_with_this(self.guard, self.object, &[
+           expression.object(),
+           thenStatement.object(),
+       ]);
+       let object = rv.unwrap().into_object().unwrap();
+       IfStatement::new(self.guard, object)
+   }
+
+   // function createKeywordTypeNode(kind: KeywordTypeNode["kind"]): KeywordTypeNode;
+   fn createKeywordTypeNode(&self, kind: &SyntaxKind) -> KeywordTypeNode {
+       let function = self.object.get(self.guard, &chakracore::Property::new(self.guard, "createKeywordTypeNode")).into_function().unwrap();
+       let rv = function.call_with_this(self.guard, self.object, &[
+           &chakracore::value::Number::new(self.guard, kind.id()).into(),
+       ]);
+       let object = rv.unwrap().into_object().unwrap();
+       KeywordTypeNode::new(self.guard, object)
+   }
+
+   // function createToken<TKind extends SyntaxKind>(token: TKind): Token<TKind>;
+   fn createToken(&self, token: &SyntaxKind) -> Token {
+       let function = self.object.get(self.guard, &chakracore::Property::new(self.guard, "createToken")).into_function().unwrap();
+       let rv = function.call_with_this(self.guard, self.object, &[
+           &chakracore::value::Number::new(self.guard, token.id()).into(),
+       ]);
+       let object = rv.unwrap().into_object().unwrap();
+       Token::new(self.guard, object)
+   }
+
+   // function createFunctionDeclaration(decorators: ReadonlyArray<Decorator> | undefined, modifiers: ReadonlyArray<Modifier> | undefined, asteriskToken: AsteriskToken | undefined, name: string | Identifier | undefined, typeParameters: ReadonlyArray<TypeParameterDeclaration> | undefined, parameters: ReadonlyArray<ParameterDeclaration>, type: TypeNode | undefined, body: Block | undefined): FunctionDeclaration;
+   fn createFunctionDeclaration(&self, decorators: Option<&[&Decorator]>, modifiers: Option<&[&Token]>, asteriskToken: Option<&AsteriskToken>, name: Option<&Identifier>, typeParameters: Option<&[&TypeParameterDeclaration]>, parameters: &[&ParameterDeclaration], type_: Option<&TypeNode>, body: Option<&Block>) -> FunctionDeclaration {
+       let function = self.object.get(self.guard, &chakracore::Property::new(self.guard, "createFunctionDeclaration")).into_function().unwrap();
+
+       let modifiers = modifiers.unwrap();
+       let modifiers_length = modifiers.len() as u32;
+       let modifiers_array = chakracore::value::Array::new(self.guard, modifiers_length);
+       for i in 0..modifiers_length {
+           modifiers_array.set_index(guard, i, modifiers[i as usize].object());
+       }
+
+       let parameters_length = parameters.len() as u32;
+       let parameters_array = chakracore::value::Array::new(self.guard, parameters_length);
+       for i in 0..parameters_length {
+           parameters_array.set_index(guard, i, parameters[i as usize].object());
+       }
+
+       let rv = function.call_with_this(self.guard, self.object, &[
+           &chakracore::value::undefined(self.guard), // TODO decorators
+           &modifiers_array,
+           &chakracore::value::undefined(self.guard), // TODO asteriskToken
+           name.unwrap().object(),
+           &chakracore::value::undefined(self.guard), // TODO typeParameters
+           &parameters_array,
+           type_.unwrap().object(),
+           body.unwrap().object(),
+       ]);
+       let object = rv.unwrap().into_object().unwrap();
+       FunctionDeclaration::new(self.guard, object)
+   }
 
 }
 
@@ -244,9 +266,12 @@ pub struct Node<'a> {
     guard: &'a chakracore::context::ContextGuard<'a>,
     object: chakracore::value::Object
 }
+impl<'a> GetObject<'a> for Node<'a> {
+    fn guard(&self) -> &'a chakracore::context::ContextGuard<'a> { self.guard }
+    fn object(&self) -> &chakracore::value::Object { &self.object }
+}
 
 impl<'a> Node<'a> {
-//    pub fn new(guard: &chakracore::context::ContextGuard, object: chakracore::value::Object) -> &Node {
     pub fn new(guard: &'a chakracore::context::ContextGuard<'a>, object: chakracore::value::Object) -> Node {
         Node { guard, object}
     }
@@ -257,8 +282,11 @@ impl<'a> Node<'a> {
     }
 }
 //impl TextRange for Node {}
-//
-//pub trait TextRange {}
+
+pub trait TextRange {
+    fn pos(&self) -> i32;
+    fn end(&self) -> i32;
+}
 
 //pub trait Declaration: Node {}
 //
