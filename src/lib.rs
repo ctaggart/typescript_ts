@@ -61,10 +61,10 @@ impl<'a> TsMod<'a> {
     }
 
     // createNode(kind: SyntaxKind, pos?: number, end?: number): Node;
-    pub fn createNode(&self, kind: &SyntaxKind, pos: Option<i32>, end: Option<i32> ) -> Node {
+    pub fn createNode(&self, kind: SyntaxKindEnum, pos: Option<i32>, end: Option<i32> ) -> Node {
         let function = self.object.get(self.guard, &chakracore::Property::new(self.guard, "createNode")).into_function().unwrap();
         let rv = function.call_with_this(self.guard, &self.object, &[
-            &chakracore::value::Number::new(self.guard, kind.id).into(),
+            &chakracore::value::Number::new(self.guard, kind as i32).into(),
             &chakracore::value::Number::new(self.guard, pos.unwrap_or(-1)).into(),
             &chakracore::value::Number::new(self.guard, end.unwrap_or(-1)).into(),
         ]);
@@ -478,6 +478,26 @@ pub struct SyntaxKind {
 //    }
 //}
 
+//impl SyntaxKindEnum {
+////    pub fn value(&self) -> i32 {
+//////        &self as i32
+//////    }
+////        match self {
+////            x if x == SyntaxKindEnum::MultiLineCommentTrivia as i32 => x,
+//////            x if x == SyntaxKindEnum::B as i32 => x,
+//////            x if x == SyntaxKindEnum::C as i32 => x,
+////            _ => 0
+////        }
+////    }
+//
+//    pub fn vl(en: SyntaxKindEnum) -> i32 {
+//        en as i32
+//    }
+//
+//
+//}
+
+//#[repr(i32)]
 pub enum SyntaxKindEnum {
     Unknown = 0,
     EndOfFileToken = 1,
