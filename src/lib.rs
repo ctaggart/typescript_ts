@@ -270,7 +270,6 @@ impl<'a> GetObject<'a> for Node<'a> {
     fn guard(&self) -> &'a chakracore::context::ContextGuard<'a> { self.guard }
     fn object(&self) -> &chakracore::value::Object { &self.object }
 }
-
 impl<'a> Node<'a> {
     pub fn new(guard: &'a chakracore::context::ContextGuard<'a>, object: chakracore::value::Object) -> Node {
         Node { guard, object}
@@ -339,42 +338,74 @@ pub trait TextRange {
 //        Box::new(ObjectBox { object: chakracore::value::Object::clone(&*v.object())})
 //    }
 //}
-//
-//pub trait ParameterDeclaration: GetObject {}
-//impl ParameterDeclaration for ObjectBox {}
-//
-//pub trait PrinterOptions : GetObject  {
-//    fn set_newLine(&self, value: Option<NewLineKind>) {
-//        let property = &chakracore::Property::new(self.guard, "newLine");
-//        match value {
-//            None => {
-//                let jsv = &chakracore::value::undefined(self.guard);
-//                self.object().set(guard, property, jsv);
-//            },
-//            Some(v) => {
-//                let jsv = &chakracore::value::Number::new(self.guard, i32::from(v));
-//                self.object().set(guard, property, jsv);
-//            },
-//        }
-//    }
-//}
-//impl PrinterOptions for ObjectBox {}
-//
-//pub trait Printer : GetObject  {
-//
-//    // printNode(hint: EmitHint, node: Node, sourceFile: SourceFile): string;
-//    fn printNode(&self, hint: &EmitHint, node: &Node, sourceFile: &SourceFile) -> String {
-//        let function = self.object.get(self.guard, &chakracore::Property::new(self.guard, "printNode")).into_function().unwrap();
-//        let rv = function.call_with_this(self.guard, self.object, &[
-//            &chakracore::value::Number::new(self.guard, hint.id()).into(),
-//            node.object(),
-//            sourceFile.object(),
-//        ]);
-//        rv.unwrap().into_string().unwrap().value()
-//    }
-//}
-//impl Printer for ObjectBox {}
-//
+
+pub struct ParameterDeclaration<'a> {
+    guard: &'a chakracore::context::ContextGuard<'a>,
+    object: chakracore::value::Object
+}
+impl<'a> GetObject<'a> for ParameterDeclaration<'a> {
+    fn guard(&self) -> &'a chakracore::context::ContextGuard<'a> { self.guard }
+    fn object(&self) -> &chakracore::value::Object { &self.object }
+}
+impl<'a> ParameterDeclaration<'a> {
+    pub fn new(guard: &'a chakracore::context::ContextGuard<'a>, object: chakracore::value::Object) -> Node {
+        Node { guard, object}
+    }
+}
+
+pub struct PrinterOptions<'a> {
+    guard: &'a chakracore::context::ContextGuard<'a>,
+    object: chakracore::value::Object
+}
+impl<'a> GetObject<'a> for PrinterOptions<'a> {
+    fn guard(&self) -> &'a chakracore::context::ContextGuard<'a> { self.guard }
+    fn object(&self) -> &chakracore::value::Object { &self.object }
+}
+impl<'a> PrinterOptions<'a> {
+    pub fn new(guard: &'a chakracore::context::ContextGuard<'a>, object: chakracore::value::Object) -> PrinterOptions {
+        PrinterOptions { guard, object}
+    }
+
+   fn set_newLine(&self, value: Option<NewLineKind>) {
+       let property = &chakracore::Property::new(self.guard, "newLine");
+       match value {
+           None => {
+               let jsv = &chakracore::value::undefined(self.guard);
+               self.object().set(guard, property, jsv);
+           },
+           Some(v) => {
+               let jsv = &chakracore::value::Number::new(self.guard, i32::from(v));
+               self.object().set(guard, property, jsv);
+           },
+       }
+   }
+}
+
+pub struct Printer<'a> {
+    guard: &'a chakracore::context::ContextGuard<'a>,
+    object: chakracore::value::Object
+}
+impl<'a> GetObject<'a> for Printer<'a> {
+    fn guard(&self) -> &'a chakracore::context::ContextGuard<'a> { self.guard }
+    fn object(&self) -> &chakracore::value::Object { &self.object }
+}
+impl<'a> Printer<'a> {
+    pub fn new(guard: &'a chakracore::context::ContextGuard<'a>, object: chakracore::value::Object) -> Node {
+        Printer { guard, object}
+    }
+
+   // printNode(hint: EmitHint, node: Node, sourceFile: SourceFile): string;
+   fn printNode(&self, hint: &EmitHint, node: &Node, sourceFile: &SourceFile) -> String {
+       let function = self.object.get(self.guard, &chakracore::Property::new(self.guard, "printNode")).into_function().unwrap();
+       let rv = function.call_with_this(self.guard, self.object, &[
+           &chakracore::value::Number::new(self.guard, hint.id()).into(),
+           node.object(),
+           sourceFile.object(),
+       ]);
+       rv.unwrap().into_string().unwrap().value()
+   }
+}
+
 //pub trait BinaryExpression: Expression + Declaration {}
 //impl BinaryExpression for ObjectBox {}
 
