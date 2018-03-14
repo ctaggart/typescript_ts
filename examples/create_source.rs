@@ -33,8 +33,9 @@ fn makeFactorialFunction<'a>(ts: &'a ts::TsMod<'a>) -> ts::Node<'a> {
         &paramName.as_Expression(),
         ts::SyntaxKind::AsteriskToken,
         &ts.createCall(&functionName.as_Expression(), /*typeArgs*/ None, &[&decrementedArg.as_Expression()]).as_Expression());
+    let ifStmt = ts.createIf(&condition.as_Expression(), &ifBody.as_Statement());
     let statements = &[
-        &ts.createIf(&condition.as_Expression(), &ifBody.as_Statement()).as_Statement(),
+        &ifStmt.as_Statement(),
         &ts.createReturn(&recurse.as_Expression()).as_Statement(),
     ];
 
