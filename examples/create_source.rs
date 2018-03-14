@@ -6,7 +6,6 @@
 
 extern crate typescript_ts as ts;
 extern crate chakracore;
-use chakracore::context::ContextGuard;
 
 fn makeFactorialFunction<'a>(ts: &'a ts::TsMod<'a>) -> ts::Node<'a> {
 
@@ -34,9 +33,10 @@ fn makeFactorialFunction<'a>(ts: &'a ts::TsMod<'a>) -> ts::Node<'a> {
         ts::SyntaxKind::AsteriskToken,
         &ts.createCall(&functionName.as_Expression(), /*typeArgs*/ None, &[&decrementedArg.as_Expression()]).as_Expression());
     let ifStmt = ts.createIf(&condition.as_Expression(), &ifBody.as_Statement());
+    let rtnStmt = ts.createReturn(&recurse.as_Expression());
     let statements = &[
         &ifStmt.as_Statement(),
-        &ts.createReturn(&recurse.as_Expression()).as_Statement(),
+        &rtnStmt.as_Statement(),
     ];
 
     let fd = ts.createFunctionDeclaration(
@@ -64,7 +64,7 @@ fn main() {
     printerOptions.set_newLine(Some(ts::NewLineKind::LineFeed));
     let printer = ts.createPrinter(&printerOptions);
     
-    let node = makeFactorialFunction(&guard, &ts);
+    let node = makeFactorialFunction(&ts);
     let result = printer.printNode(ts::EmitHint::Unspecified, &node, &resultFile);
 
     println!("{}", result);
