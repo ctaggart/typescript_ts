@@ -7,8 +7,7 @@
 extern crate typescript_ts as ts;
 extern crate chakracore;
 
-fn makeFactorialFunction<'a>(ts: &'a ts::TsMod<'a>) -> ts::Node<'a> {
-
+fn makeFactorialFunction<'a>(ts: &'a ts::TsMod<'a>) -> ts::FunctionDeclaration<'a> {
     let functionName = ts.createIdentifier("factorial");
     // let functionName2 = ts.createIdentifier("factorial"); // TODO problem with Box::from
     let paramName = ts.createIdentifier("n");
@@ -39,7 +38,7 @@ fn makeFactorialFunction<'a>(ts: &'a ts::TsMod<'a>) -> ts::Node<'a> {
         &rtnStmt.as_Statement(),
     ];
 
-    let fd = ts.createFunctionDeclaration(
+    ts.createFunctionDeclaration(
         /*decorators*/ None,
         /*modifiers*/Some(&[&ts.createToken(ts::SyntaxKind::ExportKeyword)]),
         /*asteriskToken*/ None,
@@ -48,8 +47,8 @@ fn makeFactorialFunction<'a>(ts: &'a ts::TsMod<'a>) -> ts::Node<'a> {
         &[&parameter],
         /*returnType*/ Some(&ts.createKeywordTypeNode(ts::SyntaxKind::NumberKeyword).as_TypeNode()),
         Some(&ts.createBlock(statements, /*multiline*/ true)),
-    );
-    fd.as_Node()
+    )
+    // fd.as_Node() // TODO fix lifetimes
 }
 
 fn main() {
@@ -65,7 +64,7 @@ fn main() {
     let printer = ts.createPrinter(&printerOptions);
     
     let node = makeFactorialFunction(&ts);
-    let result = printer.printNode(ts::EmitHint::Unspecified, &node, &resultFile);
+    let result = printer.printNode(ts::EmitHint::Unspecified, &node.as_Node(), &resultFile);
 
     println!("{}", result);
 }
