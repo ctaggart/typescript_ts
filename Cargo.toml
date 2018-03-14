@@ -4,4 +4,5 @@ version = "0.1.0"
 authors = ["Cameron Taggart <cameron.taggart@gmail.com>"]
 
 [dependencies]
-chakracore = "*"
+# chakracore = "*"
+chakracore = { git = 'https://github.com/darfink/chakracore-rs' }
