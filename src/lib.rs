@@ -261,7 +261,7 @@ impl<'a> Node<'a> {
     pub fn new(guard: &'a chakracore::context::ContextGuard<'a>, object: chakracore::value::Object) -> Node {
         Node { guard, object}
     }
-    pub fn as_TextRange(&self) -> TextRange {
+    pub fn as_TextRange(&self) -> TextRange<'a> {
         TextRange::new(self.guard, self.object.clone())
     }
 
@@ -335,7 +335,7 @@ impl<'a> NumericLiteral<'a> {
         NumericLiteral { guard, object }
     }
 
-    pub fn as_Expression(&self) -> Expression {
+    pub fn as_Expression(&self) -> Expression<'a> {
         Expression::new(self.guard, self.object.clone())
     }
 }
@@ -934,7 +934,7 @@ impl<'a> IfStatement<'a> {
     pub fn new(guard: &'a chakracore::context::ContextGuard<'a>, object: chakracore::value::Object) -> IfStatement {
         IfStatement { guard, object }
     }
-    pub fn as_Statement(&self) -> Statement {
+    pub fn as_Statement(&self) -> Statement<'a> {
         Statement::new(self.guard, self.object.clone())
     }
 }
@@ -947,7 +947,7 @@ impl<'a> Block<'a> {
     pub fn new(guard: &'a chakracore::context::ContextGuard<'a>, object: chakracore::value::Object) -> Block {
         Block { guard, object }
     }
-    pub fn as_Statement(&self) -> Statement {
+    pub fn as_Statement(&self) -> Statement<'a> {
         Statement::new(self.guard, self.object.clone())
     }
 }
@@ -960,7 +960,7 @@ impl<'a> ReturnStatement<'a> {
     pub fn new(guard: &'a chakracore::context::ContextGuard<'a>, object: chakracore::value::Object) -> ReturnStatement {
         ReturnStatement { guard, object }
     }
-    pub fn as_Statement(&self) -> Statement {
+    pub fn as_Statement(&self) -> Statement<'a> {
         Statement::new(self.guard, self.object.clone())
     }
 }
@@ -983,7 +983,7 @@ impl<'a> CallExpression<'a> {
     pub fn new(guard: &'a chakracore::context::ContextGuard<'a>, object: chakracore::value::Object) -> CallExpression {
         CallExpression { guard, object }
     }
-    pub fn as_Expression(&self) -> Expression {
+    pub fn as_Expression(&self) -> Expression<'a> {
         Expression::new(self.guard, self.object.clone())
     }
 }
@@ -996,7 +996,7 @@ impl<'a> KeywordTypeNode<'a> {
     pub fn new(guard: &'a chakracore::context::ContextGuard<'a>, object: chakracore::value::Object) -> KeywordTypeNode {
         KeywordTypeNode { guard, object }
     }
-    pub fn as_TypeNode(&self) -> TypeNode {
+    pub fn as_TypeNode(&self) -> TypeNode<'a> {
         TypeNode::new(self.guard, self.object.clone())
     }
 }
@@ -1019,7 +1019,7 @@ impl<'a> FunctionDeclaration<'a> {
     pub fn new(guard: &'a chakracore::context::ContextGuard<'a>, object: chakracore::value::Object) -> FunctionDeclaration {
         FunctionDeclaration { guard, object }
     }
-    pub fn as_Node(&self) -> Node {
+    pub fn as_Node(&self) -> Node<'a> {
         Node::new(self.guard, self.object.clone())
     }
 }
@@ -1040,7 +1040,7 @@ impl<'a> Identifier<'a> {
     pub fn new(guard: &'a chakracore::context::ContextGuard<'a>, object: chakracore::value::Object) -> Identifier {
         Identifier { guard, object }
     }
-    pub fn as_Expression(&self) -> Expression {
+    pub fn as_Expression(&self) -> Expression<'a> {
         Expression::new(self.guard, self.object.clone())
     }
 }
@@ -1053,7 +1053,7 @@ impl<'a> BinaryExpression<'a> {
     pub fn new(guard: &'a chakracore::context::ContextGuard<'a>, object: chakracore::value::Object) -> BinaryExpression {
         BinaryExpression { guard, object }
     }
-    pub fn as_Expression(&self) -> Expression {
+    pub fn as_Expression(&self) -> Expression<'a> {
         Expression::new(self.guard, self.object.clone())
     }
 }

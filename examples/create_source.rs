@@ -7,9 +7,8 @@
 extern crate typescript_ts as ts;
 extern crate chakracore;
 
-fn makeFactorialFunction<'a>(ts: &'a ts::TsMod<'a>) -> ts::FunctionDeclaration<'a> {
+fn makeFactorialFunction<'a>(ts: &'a ts::TsMod<'a>) -> ts::Node<'a> {
     let functionName = ts.createIdentifier("factorial");
-    // let functionName2 = ts.createIdentifier("factorial"); // TODO problem with Box::from
     let paramName = ts.createIdentifier("n");
     let parameter = ts.createParameter(
         // /*decorators*/ None,
@@ -31,24 +30,21 @@ fn makeFactorialFunction<'a>(ts: &'a ts::TsMod<'a>) -> ts::FunctionDeclaration<'
         &paramName.as_Expression(),
         ts::SyntaxKind::AsteriskToken,
         &ts.createCall(&functionName.as_Expression(), /*typeArgs*/ None, &[&decrementedArg.as_Expression()]).as_Expression());
-    let ifStmt = ts.createIf(&condition.as_Expression(), &ifBody.as_Statement());
-    let rtnStmt = ts.createReturn(&recurse.as_Expression());
     let statements = &[
-        &ifStmt.as_Statement(),
-        &rtnStmt.as_Statement(),
+        &ts.createIf(&condition.as_Expression(), &ifBody.as_Statement()).as_Statement(),
+        &ts.createReturn(&recurse.as_Expression()).as_Statement(),
     ];
 
     ts.createFunctionDeclaration(
         /*decorators*/ None,
-        /*modifiers*/Some(&[&ts.createToken(ts::SyntaxKind::ExportKeyword)]),
+        /*modifiers*/ Some(&[&ts.createToken(ts::SyntaxKind::ExportKeyword)]),
         /*asteriskToken*/ None,
         Some(&functionName),
         /*typeParameters*/ None,
         &[&parameter],
         /*returnType*/ Some(&ts.createKeywordTypeNode(ts::SyntaxKind::NumberKeyword).as_TypeNode()),
         Some(&ts.createBlock(statements, /*multiline*/ true)),
-    )
-    // fd.as_Node() // TODO fix lifetimes
+    ).as_Node()
 }
 
 fn main() {
@@ -64,7 +60,7 @@ fn main() {
     let printer = ts.createPrinter(&printerOptions);
     
     let node = makeFactorialFunction(&ts);
-    let result = printer.printNode(ts::EmitHint::Unspecified, &node.as_Node(), &resultFile);
+    let result = printer.printNode(ts::EmitHint::Unspecified, &node, &resultFile);
 
     println!("{}", result);
 }
